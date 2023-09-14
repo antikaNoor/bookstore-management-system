@@ -6,6 +6,7 @@ const express = require('express')
 const { validationResult } = require('express-validator')
 const mongoose = require("mongoose")
 const orderModel = require('../model/order')
+const jwt = require("jsonwebtoken")
 
 class transactionController {
 
@@ -193,6 +194,27 @@ class transactionController {
         catch (error) {
             console.error("Error while getting data from cart:", error);
             return res.status(500).send(failure("Internal server error"))
+        }
+    }
+
+    //get one data by id
+    async getOneById(req, res) {
+        try {
+            const { authorization } = req.headers
+
+            const token = authorization.split(' ')[1]
+            const decodedToken = jwt.decode(token, { complete: true })
+
+            const readerIdFromToken = decodedToken.payload.reader._id
+            console.log("this is from the cart controller", readerIdFromToken)
+            const existingCart = await cartModel.findOne({ reader: readerIdFromToken })
+
+            console.log(existingCart)
+            res.status(200).send(success("Got the data from the cart", existingCart))
+
+        } catch (error) {
+            console.log("error found", error)
+            res.status(500).send(failure("Internal server error"))
         }
     }
 

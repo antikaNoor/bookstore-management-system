@@ -51,24 +51,24 @@ const isAdmin = (req, res, next) => {
     }
 }
 
-const isVerified = (req, res, next) => {
+const isVerified = async (req, res, next) => {
     try {
-        const {authorization} = req.headers
-        if(!authorization) {
+        const { authorization } = req.headers
+        if (!authorization) {
             return res.status(500).send(failure("Authorization failed..."));
         }
 
-        // console.log(authorization)
         const token = authorization.split(' ')[1]
-        const decodedToken = jwt.decode(token, {complete: true})
+        const decodedToken = jwt.decode(token, { complete: true })
 
-        if(!decodedToken) {
+        if (!decodedToken) {
             return res.status(500).send(failure("Authorization failed"));
         }
 
-        console.log(decodedToken.payload.reader._id)
         const readerIdFromToken = decodedToken.payload.reader._id
-        if (readerIdFromToken === req.body.reader) {
+
+        if (readerIdFromToken) {
+            console.log(readerIdFromToken)
             // The token belongs to the same reader, so they are verified to perform the action
             next();
         } else {
