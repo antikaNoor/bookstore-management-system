@@ -12,11 +12,9 @@ const bookSchema = new mongoose.Schema({
     },
     genre: {
         type: [String],
-        required: false
     },
     pages: {
         type: Number,
-        required: false
     },
     price: {
         type: Number,
@@ -26,14 +24,27 @@ const bookSchema = new mongoose.Schema({
         type: Number,
         required: [true, "Stock should be provided"]
     },
+    branch: {
+        type: [String],
+    },
     reviews: {
         type: [mongoose.Types.ObjectId],
         ref: "Review"
     },
     rating: {
         type: Number,
-        default: 0
-    }
+    },
+    discounts: [
+        {
+            discountId: {
+                type: mongoose.Types.ObjectId,
+                ref: "Discount",
+            },
+            discountedPrice: {
+                type: Number,
+            }
+        }
+    ]
 })
 
 const Book = mongoose.model("Book", bookSchema);

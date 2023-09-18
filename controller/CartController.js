@@ -1,6 +1,7 @@
 const bookModel = require('../model/book')
 const readerModel = require('../model/reader')
 const cartModel = require('../model/cart')
+const discountModel = require('../model/discount')
 const { success, failure } = require('../utils/success-error')
 const express = require('express')
 const { validationResult } = require('express-validator')
@@ -32,11 +33,11 @@ class transactionController {
 
             // if reader id and book id is not provided
             if (!reader || !bought_books) {
-                return res.status(500).send(failure("Provide reader id and book id"))
+                return res.status(400).send(failure("Provide reader id and book id"))
             }
 
             if (bought_books.amount === 0) {
-                return res.status(500).send(failure("Amount cannot be 0."))
+                return res.status(400).send(failure("Amount cannot be 0."))
             }
 
             let totalSpent = 0
@@ -79,7 +80,6 @@ class transactionController {
                 })
             }
 
-            // Calculate total price for this transaction
             for (const book of existingTransaction.bought_books) {
                 const bookData = await bookModel.findById(book.id);
 
@@ -87,17 +87,59 @@ class transactionController {
                     return res.status(400).send(failure("Book not found"));
                 }
 
-                totalSpent += bookData.price * book.quantity;
-                if (bookData.stock - book.quantity <= 0) {
-                    return res.status(400).send(failure("Sorry, low stock!"));
-                }
+                // // Extract discounted prices using map()
+                // const discountedPrices = bookData.discounts.map((discount) => discount.discountedPrice);
+                // const minDiscountedPrice = Math.min.apply(null, discountedPrices)
+
+                // // `discountedPrices` now contains an array of discounted prices
+                // console.log(minDiscountedPrice);
+                // const minDiscountedPriceId = bookData.discounts.find((discount) => discount.discountedPrice === minDiscountedPrice).discountId;
+
+                // // const minIdConverted = new mongoose.Types.ObjectId(minDiscountedPriceId)
+                // console.log(minDiscountedPriceId)
+                // const discountData = await discountModel.findById(new mongoose.Types.ObjectId(minDiscountedPriceId));
+                // console.log(discountData)
+                // if (!discountData) {
+                //     totalSpent += bookData.price * book.quantity;
+                //     if (bookData.stock - book.quantity <= 0) {
+                //         return res.status(400).send(failure("Sorry, low stock!"));
+                //     }
+
+                //     // Update the total_spent field
+                //     existingTransaction.total_spent = totalSpent;
+                //     await existingTransaction.save();
+                //     return res.status(200).send(success("Discount not available. Updating your cart with regular price."));
+                // }
+
+                // // update total_spent with discounted price.
+                // totalSpent += minDiscountedPrice * book.quantity;
+                // if (bookData.stock - book.quantity <= 0) {
+                //     return res.status(400).send(failure("Sorry, low stock!"));
+                // }
+
+                // // Update the total_spent field
+                // existingTransaction.total_spent = totalSpent;
+                // await existingTransaction.save();
+                // return res.status(200).send(success("Updated your cart with discounted price.", existingTransaction));
+
+                // // Calculate total price for this transaction
+                // for (const book of existingTransaction.bought_books) {
+                //     const bookData = await bookModel.findById(book.id);
+
+                //     if (!bookData) {
+                //         return res.status(400).send(failure("Book not found"));
+                //     }
+
+                //     totalSpent += bookData.price * book.quantity;
+                //     if (bookData.stock - book.quantity <= 0) {
+                //         return res.status(400).send(failure("Sorry, low stock!"));
+                //     }
+                // }
+
+
+
+                // return res.status(200).send(success("Successfully added to the cart", existingTransaction))
             }
-
-            // Update the total_spent field
-            existingTransaction.total_spent = totalSpent;
-            await existingTransaction.save();
-
-            return res.status(200).send(success("Successfully added to the cart", existingTransaction))
         } catch (error) {
             console.error("Error while adding to cart:", error);
             return res.status(500).send(failure("Internal server error"))
@@ -197,8 +239,8 @@ class transactionController {
         }
     }
 
-    //get one data by id
-    async getOneById(req, res) {
+    //get the reader's cart
+    async showCart(req, res) {
         try {
             const { authorization } = req.headers
 
@@ -209,11 +251,21 @@ class transactionController {
             console.log("this is from the cart controller", readerIdFromToken)
             const existingCart = await cartModel.findOne({ reader: readerIdFromToken })
 
-            console.log(existingCart)
-            res.status(200).send(success("Got the data from the cart", existingCart))
+            if (existingCart) {
+                res.status(200).send(success("Got the data from the cart", existingCart))
+            }
+            else {
+                res.status(400).send(failure("This cart does not exist."))
+            }
 
         } catch (error) {
             console.log("error found", error)
+            if (error instanceof jwt.JsonWebTokenError) {
+                return res.status(500).send(failure("Token is invalid", error))
+            }
+            if (error instanceof jwt.TokenExpiredError) {
+                return res.status(500).send(failure("Token is expired", error))
+            }
             res.status(500).send(failure("Internal server error"))
         }
     }
@@ -252,10 +304,12 @@ class transactionController {
                     await bookData.save();
                 }
                 const totalSpent = existingCart.total_spent
+                const reader = existingCart.reader
 
                 // adding to the order schema
                 const orderInfo = await orderModel.create({
                     cart: cart,
+                    reader: reader,
                     total_spent: totalSpent,
                     bought_books: existingCart.bought_books
                 })
@@ -270,7 +324,45 @@ class transactionController {
 
         } catch (error) {
             console.error("Error while checking out:", error);
+            if (error instanceof jwt.JsonWebTokenError) {
+                return res.status(500).send(failure("Token is invalid", error))
+            }
+            if (error instanceof jwt.TokenExpiredError) {
+                return res.status(500).send(failure("Token is expired", error))
+            }
             return res.status(500).send(failure("Internal server error"))
+        }
+    }
+
+    //show reader's transactions
+    async showTransaction(req, res) {
+        try {
+            const { authorization } = req.headers
+
+            const token = authorization.split(' ')[1]
+            const decodedToken = jwt.decode(token, { complete: true })
+
+            const readerIdFromToken = decodedToken.payload.reader._id
+            console.log("this is from the cart controller", readerIdFromToken)
+            const existingTransaction = await orderModel.findOne({ reader: readerIdFromToken })
+
+            // console.log(existingTransaction)
+            if (existingTransaction) {
+                res.status(200).send(success("Got the data from transaction.", existingTransaction))
+            }
+            else {
+                res.status(400).send(failure("The reader has not made any transactions."))
+            }
+
+        } catch (error) {
+            console.log("error found", error)
+            if (error instanceof jwt.JsonWebTokenError) {
+                return res.status(500).send(failure("Token is invalid", error))
+            }
+            if (error instanceof jwt.TokenExpiredError) {
+                return res.status(500).send(failure("Token is expired", error))
+            }
+            res.status(500).send(failure("Internal server error"))
         }
     }
 
