@@ -24,11 +24,11 @@ routes.delete("/del-book-by-id/:id", checkLogin, isAdmin, logs, bookController.d
 
 routes.post("/add-reader", readerValidation.create, readerController.create, logs, readerController.add)
 
-routes.post("/add-to-cart", isVerified, logs, cartController.add) //OK
+routes.post("/add-to-cart", checkLogin, isVerified, logs, cartController.add) //OK
 routes.patch("/delete-from-cart", isVerified, logs, cartController.delete) //OK
-routes.post("/checkout", isVerified, logs, cartController.checkOut)
+routes.post("/checkout", checkLogin, isVerified, logs, cartController.checkOut)
 routes.get("/get-all-cart", logs, cartController.getAll)
-routes.get("/show-my-cart", checkLogin, isVerified, logs, cartController.showCart)
+routes.get("/show-my-cart", isVerified, logs, cartController.showCart)
 routes.get("/show-my-transaction", checkLogin, isVerified, logs, cartController.showTransaction)
 
 routes.get("/get-transaction", logs, cartController.getAll)

@@ -26,7 +26,7 @@ const checkAndUpdateDiscounts = async () => {
   try {
     // Find discounts that have expired
     const now = new Date();
-    console.log(now)
+    // console.log(now)
 
     // Find upcoming discounts with onGoing set to false
     const upcomingDiscounts = await discountModel.find({

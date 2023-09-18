@@ -74,7 +74,7 @@ class AuthController {
     async login(req, res) {
         try {
             const { reader_email, password } = req.body
-            const auth = await authModel.findOne({ reader_email }).populate("reader")
+            const auth = await authModel.findOne({ reader_email })
 
             if (!auth) {
                 return res.status(500).send(failure("Reader is not registered"))
@@ -143,7 +143,7 @@ class AuthController {
                 return res.status(500).send(failure("Failed to add the user", validation))
             }
 
-            const { reader_name, reader_email, password, status } = req.body
+            const { reader_name, reader_email, password, status, balance } = req.body
             const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
                 return hash
             })
@@ -152,6 +152,7 @@ class AuthController {
                 reader_name: reader_name,
                 reader_email: reader_email,
                 status: status,
+                balance: balance
             })
 
             const result = await authModel.create({

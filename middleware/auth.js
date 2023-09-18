@@ -4,6 +4,7 @@ const dotenv = require('dotenv')
 const authModel = require('../model/auth')
 const readerModel = require('../model/reader')
 const { success, failure } = require("../utils/success-error")
+const { default: mongoose } = require("mongoose")
 dotenv.config()
 
 const checkLogin = (req, res, next) => {
@@ -61,6 +62,7 @@ const isAdmin = (req, res, next) => {
 const isVerified = async (req, res, next) => {
     try {
         const { authorization } = req.headers
+        // console.log("skajbaf", authorization)
         if (!authorization) {
             return res.status(500).send(failure("Authorization failed..."));
         }
@@ -72,7 +74,7 @@ const isVerified = async (req, res, next) => {
             return res.status(500).send(failure("Authorization failed"));
         }
 
-        const readerIdFromToken = decodedToken.payload.reader._id
+        const readerIdFromToken = decodedToken.payload.reader
 
         if (readerIdFromToken && req.method === 'GET') {
 
@@ -84,8 +86,14 @@ const isVerified = async (req, res, next) => {
             console.log("the id is", req.body.reader)
             // The token belongs to the same reader, so they are verified to perform the action
             next();
-        } else {
-            return res.status(500).send(failure("Authorization failed: Token does not match the reader"));
+        }
+        else if (readerIdFromToken && req.method === 'POST' && req.url === '/checkout') {
+            // console.log("the id is", req.body.reader)
+            // The token belongs to the same reader, so they are verified to perform the action
+            next();
+        }
+        else {
+            return res.status(400).send(failure("Authorization failed: Token does not match the reader"));
         }
     } catch (error) {
         return res.status(500).send(failure("Internal server error", error))

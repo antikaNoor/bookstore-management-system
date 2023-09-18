@@ -30,6 +30,7 @@ class transactionController {
     async add(req, res) {
         try {
             const { reader, bought_books } = req.body
+            // console.log(reader)
 
             // if reader id and book id is not provided
             if (!reader || !bought_books) {
@@ -40,9 +41,9 @@ class transactionController {
                 return res.status(400).send(failure("Amount cannot be 0."))
             }
 
-            let totalSpent = 0
             let existingTransaction = await cartModel.findOne({ reader });
 
+            // console.log("readerrrr", existingTransaction)
             if (existingTransaction) {
                 // finding the index of the book in the array
                 let existingBookEntryIndex = -1
@@ -79,67 +80,69 @@ class transactionController {
                     }]
                 })
             }
+            await existingTransaction.save()
+            console.log(existingTransaction)
 
-            for (const book of existingTransaction.bought_books) {
-                const bookData = await bookModel.findById(book.id);
+            // for (const book of existingTransaction.bought_books) {
+            //     const bookData = await bookModel.findById(book.id);
 
-                if (!bookData) {
-                    return res.status(400).send(failure("Book not found"));
-                }
+            //     if (!bookData) {
+            //         return res.status(400).send(failure("Book not found"));
+            //     }
 
-                // // Extract discounted prices using map()
-                // const discountedPrices = bookData.discounts.map((discount) => discount.discountedPrice);
-                // const minDiscountedPrice = Math.min.apply(null, discountedPrices)
+            // // Extract discounted prices using map()
+            // const discountedPrices = bookData.discounts.map((discount) => discount.discountedPrice);
+            // const minDiscountedPrice = Math.min.apply(null, discountedPrices)
 
-                // // `discountedPrices` now contains an array of discounted prices
-                // console.log(minDiscountedPrice);
-                // const minDiscountedPriceId = bookData.discounts.find((discount) => discount.discountedPrice === minDiscountedPrice).discountId;
+            // // `discountedPrices` now contains an array of discounted prices
+            // console.log(minDiscountedPrice);
+            // const minDiscountedPriceId = bookData.discounts.find((discount) => discount.discountedPrice === minDiscountedPrice).discountId;
 
-                // // const minIdConverted = new mongoose.Types.ObjectId(minDiscountedPriceId)
-                // console.log(minDiscountedPriceId)
-                // const discountData = await discountModel.findById(new mongoose.Types.ObjectId(minDiscountedPriceId));
-                // console.log(discountData)
-                // if (!discountData) {
-                //     totalSpent += bookData.price * book.quantity;
-                //     if (bookData.stock - book.quantity <= 0) {
-                //         return res.status(400).send(failure("Sorry, low stock!"));
-                //     }
+            // // const minIdConverted = new mongoose.Types.ObjectId(minDiscountedPriceId)
+            // console.log(minDiscountedPriceId)
+            // const discountData = await discountModel.findById(new mongoose.Types.ObjectId(minDiscountedPriceId));
+            // console.log(discountData)
+            // if (!discountData) {
+            //     totalSpent += bookData.price * book.quantity;
+            //     if (bookData.stock - book.quantity <= 0) {
+            //         return res.status(400).send(failure("Sorry, low stock!"));
+            //     }
 
-                //     // Update the total_spent field
-                //     existingTransaction.total_spent = totalSpent;
-                //     await existingTransaction.save();
-                //     return res.status(200).send(success("Discount not available. Updating your cart with regular price."));
-                // }
+            //     // Update the total_spent field
+            //     existingTransaction.total_spent = totalSpent;
+            //     await existingTransaction.save();
+            //     return res.status(200).send(success("Discount not available. Updating your cart with regular price."));
+            // }
 
-                // // update total_spent with discounted price.
-                // totalSpent += minDiscountedPrice * book.quantity;
-                // if (bookData.stock - book.quantity <= 0) {
-                //     return res.status(400).send(failure("Sorry, low stock!"));
-                // }
+            // // update total_spent with discounted price.
+            // totalSpent += minDiscountedPrice * book.quantity;
+            // if (bookData.stock - book.quantity <= 0) {
+            //     return res.status(400).send(failure("Sorry, low stock!"));
+            // }
 
-                // // Update the total_spent field
-                // existingTransaction.total_spent = totalSpent;
-                // await existingTransaction.save();
-                // return res.status(200).send(success("Updated your cart with discounted price.", existingTransaction));
+            // // Update the total_spent field
+            // existingTransaction.total_spent = totalSpent;
+            // await existingTransaction.save();
+            // return res.status(200).send(success("Updated your cart with discounted price.", existingTransaction));
 
-                // // Calculate total price for this transaction
-                // for (const book of existingTransaction.bought_books) {
-                //     const bookData = await bookModel.findById(book.id);
+            // // Calculate total price for this transaction
+            // for (const book of existingTransaction.bought_books) {
+            //     const bookData = await bookModel.findById(book.id);
 
-                //     if (!bookData) {
-                //         return res.status(400).send(failure("Book not found"));
-                //     }
+            //     if (!bookData) {
+            //         return res.status(400).send(failure("Book not found"));
+            //     }
 
-                //     totalSpent += bookData.price * book.quantity;
-                //     if (bookData.stock - book.quantity <= 0) {
-                //         return res.status(400).send(failure("Sorry, low stock!"));
-                //     }
-                // }
+            //     totalSpent += bookData.price * book.quantity;
+            //     if (bookData.stock - book.quantity <= 0) {
+            //         return res.status(400).send(failure("Sorry, low stock!"));
+            //     }
+            // }
 
 
 
-                // return res.status(200).send(success("Successfully added to the cart", existingTransaction))
-            }
+            return res.status(200).send(success("Successfully added to the cart", existingTransaction))
+            // }
         } catch (error) {
             console.error("Error while adding to cart:", error);
             return res.status(500).send(failure("Internal server error"))
@@ -222,22 +225,22 @@ class transactionController {
         }
     }
 
-    async getAll(req, res) {
-        try {
-            const result = await cartModel.aggregate({
-                $group: {
-                    _id: false,
-                    total: { $sum: "$total_spent" }
-                }
-            })
-            console.log(result)
-            return res.status(200).send(success("Successfully got all from cart", result))
-        }
-        catch (error) {
-            console.error("Error while getting data from cart:", error);
-            return res.status(500).send(failure("Internal server error"))
-        }
-    }
+    // async getAll(req, res) {
+    //     try {
+    //         const result = await cartModel.aggregate({
+    //             $group: {
+    //                 _id: false,
+    //                 total: { $sum: "$total_spent" }
+    //             }
+    //         })
+    //         console.log(result)
+    //         return res.status(200).send(success("Successfully got all from cart", result))
+    //     }
+    //     catch (error) {
+    //         console.error("Error while getting data from cart:", error);
+    //         return res.status(500).send(failure("Internal server error"))
+    //     }
+    // }
 
     //get the reader's cart
     async showCart(req, res) {
@@ -247,7 +250,7 @@ class transactionController {
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            const readerIdFromToken = decodedToken.payload.reader._id
+            const readerIdFromToken = decodedToken.payload.reader
             console.log("this is from the cart controller", readerIdFromToken)
             const existingCart = await cartModel.findOne({ reader: readerIdFromToken })
 
@@ -274,6 +277,20 @@ class transactionController {
     async checkOut(req, res) {
         try {
             const { cart } = req.body
+            const { authorization } = req.headers
+
+            if (!authorization) {
+                return res.status(500).send(failure("Authorization failed..."));
+            }
+
+            const token = authorization.split(' ')[1]
+            const decodedToken = jwt.decode(token, { complete: true })
+
+            if (!decodedToken) {
+                return res.status(500).send(failure("Authorization failed"));
+            }
+
+            const readerIdFromToken = decodedToken.payload.reader
 
             // if there is nothing in the body
             if (!cart) {
@@ -281,6 +298,11 @@ class transactionController {
             }
 
             let existingCart = await cartModel.findById(new mongoose.Types.ObjectId(cart))
+            console.log(readerIdFromToken.toString())
+            console.log(existingCart.reader.toString())
+            if (readerIdFromToken.toString() !== existingCart.reader.toString()) {
+                return res.status(400).send(failure("Unauthorized reader"))
+            }
             if (existingCart) {
                 // cart exists but the array is empty
                 if (existingCart.bought_books.length === 0) {
@@ -305,6 +327,13 @@ class transactionController {
                 }
                 const totalSpent = existingCart.total_spent
                 const reader = existingCart.reader
+
+                // console.log(existingCart.reader)
+
+                const existingReader = await readerModel.findOne(reader)
+                console.log(existingCart.total_spent)
+                existingReader.balance -= existingCart.total_spent
+                existingReader.save()
 
                 // adding to the order schema
                 const orderInfo = await orderModel.create({
@@ -342,9 +371,9 @@ class transactionController {
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            const readerIdFromToken = decodedToken.payload.reader._id
+            const readerIdFromToken = decodedToken.payload.reader
             console.log("this is from the cart controller", readerIdFromToken)
-            const existingTransaction = await orderModel.findOne({ reader: readerIdFromToken })
+            const existingTransaction = await orderModel.find({ reader: readerIdFromToken })
 
             // console.log(existingTransaction)
             if (existingTransaction) {
@@ -370,7 +399,7 @@ class transactionController {
     async getAll(req, res) {
         try {
             // console.log(req.name)
-            const result = await cartModel.find({})
+            const result = await orderModel.find({})
                 .populate("reader", "-password")
                 .populate("bought_books.id")
             console.log(result)
