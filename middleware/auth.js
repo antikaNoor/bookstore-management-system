@@ -44,7 +44,8 @@ const isAdmin = (req, res, next) => {
         if (authorization) {
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
-            if (decodedToken.payload.reader.status === true) {
+            console.log(decodedToken.payload.status)
+            if (decodedToken.payload.status === true) {
                 next()
             }
             else {
@@ -59,49 +60,46 @@ const isAdmin = (req, res, next) => {
     }
 }
 
-const isVerified = async (req, res, next) => {
-    try {
-        const { authorization } = req.headers
-        // console.log("skajbaf", authorization)
-        if (!authorization) {
-            return res.status(500).send(failure("Authorization failed..."));
-        }
+// const isVerified = async (req, res, next) => {
+//     try {
+//         const { authorization } = req.headers
+//         if (!authorization) {
+//             return res.status(500).send(failure("Authorization failed..."));
+//         }
 
-        const token = authorization.split(' ')[1]
-        const decodedToken = jwt.decode(token, { complete: true })
+//         const token = authorization.split(' ')[1]
+//         const decodedToken = jwt.decode(token, { complete: true })
 
-        if (!decodedToken) {
-            return res.status(500).send(failure("Authorization failed"));
-        }
+//         if (!decodedToken) {
+//             return res.status(500).send(failure("Authorization failed"));
+//         }
 
-        const readerIdFromToken = decodedToken.payload.reader
+//         const readerIdFromToken = decodedToken.payload.reader
+//         if (readerIdFromToken) {
 
-        if (readerIdFromToken && req.method === 'GET') {
+//             // The token belongs to the same reader, so they are verified to perform the action
+//             next();
+//         }
+//         // else if (readerIdFromToken.toString() === req.body.reader.toString()) {
 
-            // The token belongs to the same reader, so they are verified to perform the action
-            next();
-        }
-        else if (readerIdFromToken === req.body.reader && req.method === 'POST') {
-
-            console.log("the id is", req.body.reader)
-            // The token belongs to the same reader, so they are verified to perform the action
-            next();
-        }
-        else if (readerIdFromToken && req.method === 'POST' && req.url === '/checkout') {
-            // console.log("the id is", req.body.reader)
-            // The token belongs to the same reader, so they are verified to perform the action
-            next();
-        }
-        else {
-            return res.status(400).send(failure("Authorization failed: Token does not match the reader"));
-        }
-    } catch (error) {
-        return res.status(500).send(failure("Internal server error", error))
-    }
-}
+//         //     console.log("the id is", req.body.reader)
+//         //     // The token belongs to the same reader, so they are verified to perform the action
+//         //     next();
+//         // }
+//         // else if (readerIdFromToken && req.url === '/checkout') {
+//         //     // console.log("the id is", req.body.reader)
+//         //     // The token belongs to the same reader, so they are verified to perform the action
+//         //     next();
+//         // }
+//         else {
+//             return res.status(400).send(failure("Authorization failed: Token does not match the reader"));
+//         }
+//     } catch (error) {
+//         return res.status(500).send(failure("Internal server error", error))
+//     }
+// }
 
 module.exports = {
     checkLogin,
-    isAdmin,
-    isVerified
+    isAdmin
 }

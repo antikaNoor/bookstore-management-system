@@ -80,6 +80,19 @@ class transactionController {
                     }]
                 })
             }
+
+            for (const book of existingTransaction.bought_books) {
+                const bookData = await bookModel.findById(book.id);
+
+                if (!bookData) {
+                    return res.status(400).send(failure("Book not found"));
+                }
+                if (bookData.stock - book.quantity < 0) {
+                    return res.status(400).send(failure("Sorry, low stock!"));
+                }
+
+            }
+
             await existingTransaction.save()
             console.log(existingTransaction)
 
@@ -318,7 +331,7 @@ class transactionController {
 
                     let updateStock = bookData.stock
 
-                    if (updateStock - book.quantity <= 0) {
+                    if (updateStock - book.quantity < 0) {
                         return res.status(400).send(failure("Sorry, low stock!"));
                     }
                     bookData.stock -= book.quantity
@@ -332,6 +345,10 @@ class transactionController {
 
                 const existingReader = await readerModel.findOne(reader)
                 console.log(existingCart.total_spent)
+                // updating reader's balance from the reader schema
+                if (existingCart.total_spent >= existingReader.balance) {
+                    return res.status(400).send(failure("Sorry, low balance! Try updating your balance."));
+                }
                 existingReader.balance -= existingCart.total_spent
                 existingReader.save()
 

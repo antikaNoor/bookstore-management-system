@@ -77,7 +77,7 @@ class AuthController {
             const auth = await authModel.findOne({ reader_email })
 
             if (!auth) {
-                return res.status(500).send(failure("Reader is not registered"))
+                return res.status(400).send(failure("Reader is not registered"))
             }
 
             const currentTime = new Date()
@@ -117,7 +117,7 @@ class AuthController {
             delete responseAuth.updatedAt
 
             const generatedToken = jwt.sign(responseAuth, process.env.JWT_SECRET, {
-                expiresIn: "1h"
+                expiresIn: "5h"
             })
 
             responseAuth.token = generatedToken

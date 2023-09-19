@@ -4,90 +4,117 @@ const express = require('express')
 const { validationResult } = require('express-validator')
 const HTTP_STATUS = require("../constants/statusCode");
 const bcrypt = require("bcrypt")
+const mongoose = require('mongoose')
+const jwt = require('jsonwebtoken')
 
 class readerController {
 
-    // validation
-    async create(req, res, next) {
+    async updateByUser(req, res) {
         try {
-            const validation = validationResult(req).array()
-            console.log("validation error", validation)
-            if (validation.length > 0) {
-                return res.status(422).send({ message: "validation error", validation })
+            const { authorization } = req.headers
+            const { balance } = req.body
+
+            const token = authorization.split(' ')[1]
+            const decodedToken = jwt.decode(token, { complete: true })
+
+            const readerIdFromToken = decodedToken.payload.reader
+            const existingReader = await readerModel.findOne(new mongoose.Types.ObjectId(readerIdFromToken))
+
+            if (!existingReader) {
+                return res.status(400).send(failure("Reader not found!"))
             }
-            else {
-                next()
-            }
+            existingReader.balance += balance
+            existingReader.save()
+            return res.status(200).send(success("Successfully updated the balance.", existingReader))
+            // console.log(existingReader.balance)
         } catch (error) {
-            console.log("error has occured")
+            if (error instanceof jwt.JsonWebTokenError) {
+                return res.status(500).send(failure("Token is invalid", error))
+            }
+            if (error instanceof jwt.TokenExpiredError) {
+                return res.status(500).send(failure("Token is expired", error))
+            }
+            return res.status(500).send(failure("Internal server error", error))
         }
     }
-
-    //add data
-    async add(req, res) {
+    // admin can view all user data
+    async viewUserData(req, res) {
         try {
-            const { reader_name, reader_email } = req.body
-            console.log(reader_name)
-            console.log(reader_email)
-
-            const reader = new readerModel({ reader_name, reader_email })
-            console.log(reader)
-            await reader.save()
-
-            // return res.status(200).send(success("Successfully added the reader"))
-
-            return res.status(200).send(success("Successfully added the reader"))
-            // console.log(read)
-
-            // const hashedPass = await bcrypt.hash(password, 10)
-            // if (reader_name.toLowerCase() === "admin") {
-            //     console.log("admin")
-            //     const readerInfo = {
-            //         reader_name: req.body.reader_name,
-            //         reader_email: req.body.reader_email,
-            //         password: hashedPass,
-            //         status: true
-            //     }
-            //     const reader = new readerModel(readerInfo)
-            //     await reader.save()
-
-            //     return res.status(200).send(success("Successfully added the admin"))
-            // }
-            // else {
-            //     console.log("not admin")
-            //     const readerInfo = {
-            //         reader_name: req.body.reader_name,
-            //         reader_email: req.body.reader_email,
-            //         password: hashedPass,
-            //         status: false
-            //     }
-            //     const reader = new readerModel(readerInfo)
-            //     await reader.save()
-
-            //     return res.status(200).send(success("Successfully added the reader"))
-            // }
-
-        } catch (error) {
-            console.error("Error while creating reader:", error);
-            return res.status(500).send(failure("Could not add the reader"))
-        }
-    }
-
-    //get all data
-    async getAll(req, res) {
-        try {
-            // console.log(req.name)
-            const result = await readerModel.find({});
+            const result = await readerModel.find({})
+                .select('-_id -updatedAt -__v')
             console.log(result)
-            if (result.length > 0) {
-                return res
-                    .status(200)
-                    .send(success("Successfully received all readers", { reader: result, total: result.length }));
-            }
-            return res.status(500).send(success("No readers were found"));
+
+            return res.status(200).send(success("Successfully got all user data", result))
 
         } catch (error) {
             res.status(500).send(failure(error.message))
+        }
+    }
+
+    // Edit existing user data
+    async editUserData(req, res) {
+        try {
+            const { readerId } = req.params
+
+            const { reader_name, reader_email, status, balance } = req.body
+            const existingReader = await readerModel.findById(readerId)
+            if (!existingReader) {
+                return res.status(400).send(failure("Reader not found."))
+            }
+            const existingName = await readerModel.findOne({
+                _id: { $ne: readerId },
+                reader_name
+            })
+            const existingEmail = await readerModel.findOne({
+                _id: { $ne: readerId },
+                reader_email
+            })
+
+            if (existingName || existingEmail) {
+                return res.status(400).send(failure("This reader-name/ email is taken."))
+            }
+            const updatedReader = {
+                reader_name,
+                reader_email,
+                status,
+                balance
+            }
+            const result = await readerModel.findOneAndUpdate(
+                { _id: readerId }, // Find by _id
+                updatedReader, // Update with the new data
+                { new: true }
+            );
+            console.log(result)
+            if (!result) {
+                return res.status(400).send(failure("Can't find the reader"))
+            }
+            return res.status(200).send(success("Successfully updated the reader", result))
+
+
+        } catch (error) {
+            console.log("error found", error)
+            res.status(500).send(failure("Internal server error"))
+        }
+    }
+
+    // Delete reader's data by admin
+    async deleteUserData(req, res) {
+        try {
+            const { readerId } = req.params
+            const { reader_name, reader_email, status, balance } = req.body
+
+            const existingReader = await readerModel.findById(readerId)
+            if (!existingReader) {
+                return res.status(400).send(failure("Reader not found."))
+            }
+            await readerModel.findByIdAndDelete(readerId)
+
+            return res.status(200).send(success(`Successfully deleted the ${reader_name}'s information`))
+
+
+        } catch (error) {
+            console.log("error found", error)
+            res.status(500).send(failure("Internal server error"))
         }
     }
 
@@ -129,26 +156,7 @@ class readerController {
         }
     }
 
-    //updatedatabyid
-    async updateOneById(req, res) {
-        try {
-            // const { reader_name, reader_email, read } = req.body
-            const { id } = req.params; // Retrieve the id from req.params
-            // console.log(id);
-            const options = { upsert: true };
-            const result = await readerModel.findByIdAndUpdate(id, req.body, options);
-            // console.log(result)
-            if (result) {
-                res.status(200).send(success("Successfully updated the reader", result))
-            } else {
-                res.status(200).send(failure("Can't find the reader"))
-            }
 
-        } catch (error) {
-            console.log("error found", error)
-            res.status(500).send(failure("Internal server error"))
-        }
-    }
 }
 
 module.exports = new readerController()

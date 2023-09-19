@@ -13,6 +13,10 @@ class reviewClass {
         try {
             const { book, reader, rating, text } = req.body
 
+            if (!book) {
+                return res.status(400).send(failure("Please enter a valid book id."))
+            }
+
             let existingBook = await bookModel.findById(new mongoose.Types.ObjectId(book))
             let existingReader = await readerModel.findById(new mongoose.Types.ObjectId(reader))
             const existingReview = await reviewModel.findOne({ book, reader })
@@ -23,33 +27,31 @@ class reviewClass {
             if ((!existingBook && !existingReader) || (!existingBook && existingReader) || (existingBook && !existingReader)) {
                 return res.status(400).send(failure("Please provide a valid book or/and reader id."))
             }
-            else {
-                const review = new reviewModel({ book, reader, rating, text })
+            const review = new reviewModel({ book, reader, rating, text })
 
-                await review.save()
-                // Update the book's rating and get the new average rating
-                const reviews = await reviewModel.find({ book, rating: { $exists: true } }); // Only consider reviews with a rating property
-                let totalRating = 0;
-                let numberOfReviewsWithRatings = 0;
+            await review.save()
+            // Update the book's rating and get the new average rating
+            const reviews = await reviewModel.find({ book, rating: { $exists: true } }); // Only consider reviews with a rating property
+            let totalRating = 0;
+            let numberOfReviewsWithRatings = 0;
 
-                for (const rev of reviews) {
-                    totalRating += rev.rating;
-                    numberOfReviewsWithRatings++;
-                }
-
-                // to avoid divide by zero error
-                const averageRating = numberOfReviewsWithRatings > 0 ? totalRating / numberOfReviewsWithRatings : 0;
-
-                // Update the book's rating
-                await bookModel.findByIdAndUpdate(book, {
-                    rating: averageRating,
-                    $push: { reviews: review._id } // Add the review ID to the reviews array
-                });
-
-                console.log(`Average rating updated for book ${book} to ${averageRating}`)
-
-                return res.status(200).send(success("Successfully added the review", review))
+            for (const rev of reviews) {
+                totalRating += rev.rating;
+                numberOfReviewsWithRatings++;
             }
+
+            // to avoid divide by zero error
+            const averageRating = numberOfReviewsWithRatings > 0 ? totalRating / numberOfReviewsWithRatings : 0;
+
+            // Update the book's rating
+            await bookModel.findByIdAndUpdate(book, {
+                rating: averageRating,
+                $push: { reviews: review._id } // Add the review ID to the reviews array
+            });
+
+            console.log(`Average rating updated for book ${book} to ${averageRating}`)
+
+            return res.status(200).send(success("Successfully added the review", review))
 
         } catch (error) {
             console.error("Error while entering review:", error);
@@ -66,7 +68,7 @@ class reviewClass {
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            const readerIdFromToken = decodedToken.payload.reader._id
+            const readerIdFromToken = decodedToken.payload.reader
             const existingReview = await reviewModel.findOne({ reader: readerIdFromToken, book: book })
 
             // Check if the review exists
@@ -75,40 +77,45 @@ class reviewClass {
             }
 
 
-            // // if the rating is already removed by the reader
-            // if (existingReview.rating === undefined && existingReview.text === undefined) {
-            //     return res.status(400).send(failure("You already removed the rating and the review."))
-            // }
+            // if the rating is already removed by the reader
+            if (!rating && !text) {
 
-            if (existingReview) {
-                existingReview.rating = rating
-                existingReview.text = text
-                await existingReview.save()
+                // Update the associated book document to remove the discount ID
+                await bookModel.findByIdAndUpdate(
+                    book,
+                    { $pull: { reviews: existingReview._id } },
+                    { new: true } // This option returns the updated document
+                )
+                await reviewModel.deleteOne({ _id: existingReview._id });
 
-                // Update the book's rating and get the new average rating
-                // const reviews = await reviewModel.find({ book });
-                let totalRating = 0;
-
-                for (const rev of reviews) {
-                    totalRating += rev.rating;
-                }
-
-                const averageRating = totalRating / reviews.length
-
-                // Update the book's rating
-                await bookModel.findByIdAndUpdate(book, {
-                    rating: averageRating,
-                    $push: { reviews: review._id } // Add the review ID to the reviews array
-                });
-
-                console.log(`Average rating updated for book ${book} to ${averageRating}`)
-                return res.status(200).send(success("Updated the review.", existingReview))
+                return res.status(200).send(success("You removed the rating and the review. The review is deleted."))
             }
 
+            existingReview.rating = rating
+            existingReview.text = text
+            await existingReview.save()
 
-            else {
-                return res.status(400).send(failure("The reader has not made any transactions."))
+            // Update the book's rating and get the new average rating
+            const reviews = await reviewModel.find({ book, rating: { $exists: true } }); // Only consider reviews with a rating property
+            let totalRating = 0;
+            let numberOfReviewsWithRatings = 0;
+
+            for (const rev of reviews) {
+                totalRating += rev.rating;
+                numberOfReviewsWithRatings++;
             }
+
+            // to avoid divide by zero error
+            const averageRating = numberOfReviewsWithRatings > 0 ? totalRating / numberOfReviewsWithRatings : 0;
+
+            // Update the book's rating
+            await bookModel.findByIdAndUpdate(book, {
+                rating: averageRating
+            });
+
+            console.log(`Average rating updated for book ${book} to ${averageRating}`)
+
+            return res.status(200).send(success("Successfully added the review", existingReview))
 
         } catch (error) {
             console.log("error found", error)
