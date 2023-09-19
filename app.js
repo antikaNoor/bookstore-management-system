@@ -1,12 +1,22 @@
 const express = require('express')
-const discountModel = require('./model/discount')
-const bookModel = require('./model/book')
-const cartModel = require('./model/cart')
-const bookshopRouter = require('./routes/bookshopRoutes')
+const authRouter = require('./routes/authRoutes')
+const bookRouter = require('./routes/bookRoutes')
+const cartRouter = require('./routes/cartRoutes')
+const discountRouter = require('./routes/discountRoutes')
+const readerRouter = require('./routes/readerRoutes')
+const reviewRouter = require('./routes/reviewRoutes')
 const cors = require("cors")
 const databaseConnection = require('./config/database')
 const dotenv = require('dotenv')
 dotenv.config()
+const fs = require('fs')
+const path = require('path')
+const morgan = require('morgan')
+
+const logFile = fs.createWriteStream(
+  path.join(__dirname, "logFile.log"),
+  { flags: "a" }
+)
 
 const app = express()
 app.use(cors({ origin: "*" }))
@@ -21,9 +31,16 @@ app.use((err, req, res, next) => {
   next()
 })
 
+app.use(morgan("combined", {
+  stream: logFile
+}))
 
-
-app.use("/shop", bookshopRouter)
+app.use("/auth", authRouter)
+app.use("/book", bookRouter)
+app.use("/cart", cartRouter)
+app.use("/discount", discountRouter)
+app.use("/reader", readerRouter)
+app.use("/review", reviewRouter)
 
 // using route() method to get the invalid routes
 app.route('*')

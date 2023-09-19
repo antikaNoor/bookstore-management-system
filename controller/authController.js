@@ -7,8 +7,6 @@ const HTTP_STATUS = require("../constants/statusCode");
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
-const fs = require('fs')
-const randomString = require('randomstring')
 
 class AuthController {
 
@@ -24,49 +22,6 @@ class AuthController {
             }
         } catch (error) {
             console.log("error has occured")
-        }
-    }
-
-    // refresh token
-    async refresh(req, res) {
-        try {
-            const { reader_email } = req.body
-            const emailExists = await authModel.findOne({ reader_email })
-
-            if (emailExists) {
-                console.log("yes")
-                const secretKey = process.env.JWT_SECRET
-                const newSecretKey = randomString.generate()
-
-                fs.readFile("./.env", "utf-8", (err, data) => {
-                    if (err) throw err
-
-                    var newValue = data.replace(new RegExp(secretKey, "g"), newSecretKey)
-
-                    fs.writeFile("./.env", newValue, "utf-8", (err, data) => {
-                        if (err) throw err
-                        console.log("Done!")
-                    })
-                })
-
-                const newToken = jwt.sign({ reader_email }, process.env.JWT_SECRET, { expiresIn: '1h' })
-                const response = {
-                    reader_email: reader_email,
-                    token: newToken
-                }
-                return res.status(200).send(success("Refresh successful", response))
-            }
-            else {
-                return res.status(500).send(failure("This email does not exist."))
-            }
-        } catch (error) {
-            if (error instanceof jwt.JsonWebTokenError) {
-                return res.status(500).send(failure("Token is invalid", error))
-            }
-            if (error instanceof jwt.TokenExpiredError) {
-                return res.status(500).send(failure("Token is expired", error))
-            }
-            return res.status(500).send(failure("Internal server error in refresh", error))
         }
     }
 
@@ -111,7 +66,6 @@ class AuthController {
 
             delete responseAuth.password
             delete responseAuth._id
-            // delete responseAuth.reader._id
             delete responseAuth.loginAttempt
             delete responseAuth.createdAt
             delete responseAuth.updatedAt
@@ -124,12 +78,6 @@ class AuthController {
 
             return res.status(200).send(success("Login successful", responseAuth))
         } catch (error) {
-            if (error instanceof jwt.JsonWebTokenError) {
-                return res.status(500).send(failure("Token is invalid", error))
-            }
-            if (error instanceof jwt.TokenExpiredError) {
-                return res.status(500).send(failure("Token is expired", error))
-            }
             return res.status(500).send(failure("Internal server error", error))
         }
     }
@@ -140,10 +88,17 @@ class AuthController {
             const validation = validationResult(req).array()
             if (validation.length > 0) {
                 console.log("validation error", validation)
-                return res.status(500).send(failure("Failed to add the user", validation))
+                return res.status(400).send(failure("Failed to add the user", validation))
             }
 
+            console.log(validation)
+
             const { reader_name, reader_email, password, status, balance } = req.body
+            const existingReader = await authModel.findOne({ reader_name, reader_email })
+
+            if (existingReader) {
+                return res.status(400).send(failure("This reader is already registered."))
+            }
             const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
                 return hash
             })
@@ -162,10 +117,8 @@ class AuthController {
                 reader: readerInfo._id
             })
 
-            console.log(result)
             return res.status(200).send(success("Successfully added the user"))
         } catch (error) {
-            console.log("Error")
             return res.status(500).send(failure("Internal server error", error))
         }
     }

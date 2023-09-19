@@ -1,11 +1,11 @@
 const express = require('express')
 const routes = express()
-const readerValidation = require('../middleware/readerValidation')
+const { authValidator, bookValidator, discountValidator, readerEditValidator } = require('../middleware/validation')
 const { checkLogin, isAdmin } = require('../middleware/auth')
 const logs = require('../middleware/log')
 const discountController = require('../controller/discountController')
 
-routes.post("/add-discount", checkLogin, isAdmin, logs, discountController.add)
-routes.patch("/update-discount", checkLogin, isAdmin, logs, discountController.update)
+routes.post("/add-discount", discountValidator.create, checkLogin, isAdmin, discountController.add)
+routes.patch("/update-discount", checkLogin, isAdmin, discountController.update)
 
 module.exports = routes

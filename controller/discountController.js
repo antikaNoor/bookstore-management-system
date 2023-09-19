@@ -1,15 +1,22 @@
-const { default: mongoose } = require('mongoose')
+const mongoose = require('mongoose')
 const bookModel = require('../model/book')
 const reviewModel = require('../model/review')
 const discountModel = require('../model/discount')
 const { success, failure } = require('../utils/success-error')
 const express = require('express')
+const { validationResult } = require('express-validator')
 
 class discountController {
 
     //add discount
     async add(req, res) {
         try {
+
+            const validation = validationResult(req).array()
+            if (validation.length > 0) {
+                console.log("validation error", validation)
+                return res.status(400).send(failure("Failed to add the discount", validation))
+            }
             const { book, branch, discountPercentage, startDate, endDate } = req.body
 
             if (startDate >= endDate) {
@@ -32,16 +39,6 @@ class discountController {
                 if (existingDiscount) {
                     return res.status(400).send(failure(`You have already added discount for this book in ${branch}.`))
                 }
-                // const couponCodeMap = {
-                //     10: 'COUP10',
-                //     25: 'COUP25',
-                //     30: 'COUP30',
-                //     40: 'COUP40',
-                // };
-
-                // // Use the mapping to get the coupon code based on discountPercentage
-                // const coupon = couponCodeMap[discountPercentage]
-                // console.log(coupon)
                 // otherwise, add the discount. and update the discounts from books collection
                 const discount = new discountModel({ book, branch, discountPercentage, startDate, endDate, onGoing: false })
                 console.log(discount)

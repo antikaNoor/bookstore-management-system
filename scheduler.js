@@ -1,16 +1,12 @@
 const mongoose = require('mongoose')
-const express = require('express')
 const discountModel = require('./model/discount')
 const bookModel = require('./model/book')
 const cartModel = require('./model/cart')
-const bookshopRouter = require('./routes/bookshopRoutes')
-const cors = require("cors")
 const databaseConnection = require('./config/database')
 const dotenv = require('dotenv')
 dotenv.config()
 
 databaseConnection(() => {
-    // console.log(process.env.JWT_SECRET)
     console.log("Database connected to scheduler")
 })
 
@@ -41,7 +37,6 @@ const checkAndUpdateDiscounts = async () => {
                     discountId: upcomingDiscount._id,
                     discountedPrice: updatedPrice
                 });
-                // book.discounts.push(upcomingDiscount._id);
                 await book.save();
             }
         }
@@ -60,7 +55,6 @@ const checkAndUpdateDiscounts = async () => {
             // Update the associated book document to remove the discount ID
             const book = await bookModel.findById(expiredDiscount.book);
             if (book) {
-                // book.discounts.pull(expiredDiscount._id);
                 book.discounts.pull({ discountId: expiredDiscount._id });
 
                 await book.save();
@@ -84,12 +78,9 @@ const checkAndUpdateCartPrice = async () => {
     try {
         // Get all active discounts
         const activeDiscounts = await discountModel.find({ onGoing: true });
-        // console.log(activeDiscounts)
-
 
         // Iterate through each cart
         const carts = await cartModel.find();
-        let totalSpent = 0
 
         for (const cart of carts) {
             for (const book of cart.bought_books) {
@@ -106,23 +97,17 @@ const checkAndUpdateCartPrice = async () => {
                     book.price = bookData.price;
                 } else {
                     // Calculate the discounted price based on available discounts
-                    const availableDiscount = activeDiscounts.find((discount) =>
+                    const availableDiscount = activeDiscounts.filter((discount) =>
                         discount.book.equals(bookData._id)
                     );
-                    if (availableDiscount) {
-                        // Discount found for this book, update the price accordingly
-                        book.price = bookData.discounts.find(
-                            (discount) => discount.discountId.equals(availableDiscount._id)
-                        ).discountedPrice;
-                    } else {
-                        // No matching discount found, update with the next best discounted price
-                        const discountedPrices = bookData.discounts.map(
-                            (discount) => discount.discountedPrice
-                        );
 
-                        const minDiscountedPrice = Math.min(...discountedPrices);
-                        book.price = minDiscountedPrice;
-                    }
+                    // Find the maximum discount percentage among available discounts
+                    const maxDiscountPercentage = Math.max(
+                        ...availableDiscount.map((discount) => discount.discountPercentage)
+                    );
+
+                    // Apply the maximum discount percentage to the book price
+                    book.price = bookData.price - (bookData.price * maxDiscountPercentage) / 100;
                 }
             }
 

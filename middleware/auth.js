@@ -4,7 +4,7 @@ const dotenv = require('dotenv')
 const authModel = require('../model/auth')
 const readerModel = require('../model/reader')
 const { success, failure } = require("../utils/success-error")
-const { default: mongoose } = require("mongoose")
+const mongoose = require("mongoose")
 dotenv.config()
 
 const checkLogin = (req, res, next) => {

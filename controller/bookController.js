@@ -24,11 +24,22 @@ class bookController {
     //add data
     async add(req, res) {
         try {
+            const validation = validationResult(req).array()
+            if (validation.length > 0) {
+                console.log("validation error", validation)
+                return res.status(400).send(failure("Failed to add the book", validation))
+            }
+
+            console.log(validation)
             const { title, author, genre, pages, price, stock, branch } = req.body
+
+            if (!price || !stock) {
+                return res.status(400).send(failure("Price and stock must be provided"))
+            }
 
             let existingBook = await bookModel.findOne({ title, author })
             if (existingBook) {
-                return res.status(500).send(failure("This book already exists!"))
+                return res.status(400).send(failure("This book already exists!"))
             }
             else {
                 const book = new bookModel({ title, author, genre, pages, price, stock, branch })
@@ -164,26 +175,40 @@ class bookController {
         }
     }
 
-    //get one data by id
-    async getOneById(req, res) {
+    // Edit existing book data
+    async editBookData(req, res) {
         try {
-            const { id } = req.params;
-            const result = await bookModel.findById({ _id: id })
-                .populate({
-                    path: "reviews",
-                    populate: {
-                        path: "reader",
-                        model: "Reader",
-                        select: "reader_name",
-                    },
-                    select: "rating text",
-                });
-            console.log(result)
-            if (result) {
-                res.status(200).send(success("Successfully received the book", result))
-            } else {
-                res.status(200).send(failure("Can't find the book"))
+            const { bookId } = req.params
+
+            const { title, author, genre, pages, price, stock, branch } = req.body
+            const existingBook = await bookModel.findById(bookId)
+            if (!existingBook) {
+                return res.status(400).send(failure("Book not found."))
             }
+            const duplicateBook = await bookModel.findOne({
+                _id: { $ne: bookId },
+                title,
+                author
+            })
+
+            console.log("dup", duplicateBook)
+
+            if (duplicateBook) {
+                return res.status(400).send(failure("Book already exists."))
+            }
+            const updatedBook = {
+                title, author, genre, pages, price, stock, branch
+            }
+            const result = await bookModel.findOneAndUpdate(
+                { _id: bookId }, // Find by _id
+                updatedBook, // Update with the new data
+                { new: true }
+            );
+            if (!result) {
+                return res.status(400).send(failure("Can't find the book"))
+            }
+            return res.status(200).send(success("Successfully updated the book", result))
+
 
         } catch (error) {
             console.log("error found", error)
@@ -191,23 +216,70 @@ class bookController {
         }
     }
 
-    //delete data by id
-    async deleteOneById(req, res) {
+    // Delete book data by admin
+    async deleteBookData(req, res) {
         try {
-            const { id } = req.params;
-            console.log(id);
-            const result = await bookModel.findOneAndDelete({ _id: id })
-            if (result) {
-                res.status(200).send(success("Successfully deleted the book", result))
-            } else {
-                res.status(200).send(failure("Can't find the book"))
+            const { bookId } = req.params
+
+            const existingBook = await bookModel.findById(bookId)
+            if (!existingBook) {
+                return res.status(400).send(failure("Book not found."))
             }
+            await bookModel.findByIdAndDelete(bookId)
+
+            return res.status(200).send(success("Successfully deleted the book information"))
+
 
         } catch (error) {
             console.log("error found", error)
-            res.status(500).send(failure("Internal server error", error))
+            res.status(500).send(failure("Internal server error"))
         }
     }
+
+    // //get one data by id
+    // async getOneById(req, res) {
+    //     try {
+    //         const { id } = req.params;
+    //         const result = await bookModel.findById({ _id: id })
+    //             .populate({
+    //                 path: "reviews",
+    //                 populate: {
+    //                     path: "reader",
+    //                     model: "Reader",
+    //                     select: "reader_name",
+    //                 },
+    //                 select: "rating text",
+    //             });
+    //         console.log(result)
+    //         if (result) {
+    //             res.status(200).send(success("Successfully received the book", result))
+    //         } else {
+    //             res.status(200).send(failure("Can't find the book"))
+    //         }
+
+    //     } catch (error) {
+    //         console.log("error found", error)
+    //         res.status(500).send(failure("Internal server error"))
+    //     }
+    // }
+
+    // //delete data by id
+    // async deleteOneById(req, res) {
+    //     try {
+    //         const { id } = req.params;
+    //         console.log(id);
+    //         const result = await bookModel.findOneAndDelete({ _id: id })
+    //         if (result) {
+    //             res.status(200).send(success("Successfully deleted the book", result))
+    //         } else {
+    //             res.status(200).send(failure("Can't find the book"))
+    //         }
+
+    //     } catch (error) {
+    //         console.log("error found", error)
+    //         res.status(500).send(failure("Internal server error", error))
+    //     }
+    // }
 
     // //updatedatabyid
     // async updateOneById(req, res) {

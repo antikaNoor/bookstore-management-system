@@ -96,66 +96,7 @@ class transactionController {
             await existingTransaction.save()
             console.log(existingTransaction)
 
-            // for (const book of existingTransaction.bought_books) {
-            //     const bookData = await bookModel.findById(book.id);
-
-            //     if (!bookData) {
-            //         return res.status(400).send(failure("Book not found"));
-            //     }
-
-            // // Extract discounted prices using map()
-            // const discountedPrices = bookData.discounts.map((discount) => discount.discountedPrice);
-            // const minDiscountedPrice = Math.min.apply(null, discountedPrices)
-
-            // // `discountedPrices` now contains an array of discounted prices
-            // console.log(minDiscountedPrice);
-            // const minDiscountedPriceId = bookData.discounts.find((discount) => discount.discountedPrice === minDiscountedPrice).discountId;
-
-            // // const minIdConverted = new mongoose.Types.ObjectId(minDiscountedPriceId)
-            // console.log(minDiscountedPriceId)
-            // const discountData = await discountModel.findById(new mongoose.Types.ObjectId(minDiscountedPriceId));
-            // console.log(discountData)
-            // if (!discountData) {
-            //     totalSpent += bookData.price * book.quantity;
-            //     if (bookData.stock - book.quantity <= 0) {
-            //         return res.status(400).send(failure("Sorry, low stock!"));
-            //     }
-
-            //     // Update the total_spent field
-            //     existingTransaction.total_spent = totalSpent;
-            //     await existingTransaction.save();
-            //     return res.status(200).send(success("Discount not available. Updating your cart with regular price."));
-            // }
-
-            // // update total_spent with discounted price.
-            // totalSpent += minDiscountedPrice * book.quantity;
-            // if (bookData.stock - book.quantity <= 0) {
-            //     return res.status(400).send(failure("Sorry, low stock!"));
-            // }
-
-            // // Update the total_spent field
-            // existingTransaction.total_spent = totalSpent;
-            // await existingTransaction.save();
-            // return res.status(200).send(success("Updated your cart with discounted price.", existingTransaction));
-
-            // // Calculate total price for this transaction
-            // for (const book of existingTransaction.bought_books) {
-            //     const bookData = await bookModel.findById(book.id);
-
-            //     if (!bookData) {
-            //         return res.status(400).send(failure("Book not found"));
-            //     }
-
-            //     totalSpent += bookData.price * book.quantity;
-            //     if (bookData.stock - book.quantity <= 0) {
-            //         return res.status(400).send(failure("Sorry, low stock!"));
-            //     }
-            // }
-
-
-
             return res.status(200).send(success("Successfully added to the cart", existingTransaction))
-            // }
         } catch (error) {
             console.error("Error while adding to cart:", error);
             return res.status(500).send(failure("Internal server error"))

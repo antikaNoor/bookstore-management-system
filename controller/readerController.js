@@ -1,4 +1,5 @@
 const readerModel = require('../model/reader')
+const authModel = require('../model/auth')
 const { success, failure } = require('../utils/success-error')
 const express = require('express')
 const { validationResult } = require('express-validator')
@@ -11,6 +12,7 @@ class readerController {
 
     async updateByUser(req, res) {
         try {
+            console.log(validation)
             const { authorization } = req.headers
             const { balance } = req.body
 
@@ -54,67 +56,78 @@ class readerController {
     // Edit existing user data
     async editUserData(req, res) {
         try {
-            const { readerId } = req.params
+            const validationErrors = validationResult(req);
 
-            const { reader_name, reader_email, status, balance } = req.body
-            const existingReader = await readerModel.findById(readerId)
-            if (!existingReader) {
-                return res.status(400).send(failure("Reader not found."))
+            if (!validationErrors.isEmpty()) {
+                return res.status(400).send(failure("Failed to edit the reader data.", validationErrors.array()));
             }
-            const existingName = await readerModel.findOne({
+
+            const { readerId } = req.params;
+            const { reader_name, status } = req.body;
+
+            // Find the existing reader in the 'auth' collection
+            const existingAuth = await authModel.findById(readerId);
+
+            if (!existingAuth) {
+                return res.status(400).send(failure("Reader not found."));
+            }
+
+            const matchName = existingAuth.reader_name
+
+            // Check if the new reader name conflicts with any other existing reader
+            const existingName = await authModel.findOne({
                 _id: { $ne: readerId },
                 reader_name
-            })
-            const existingEmail = await readerModel.findOne({
-                _id: { $ne: readerId },
-                reader_email
-            })
+            });
 
-            if (existingName || existingEmail) {
-                return res.status(400).send(failure("This reader-name/ email is taken."))
+            if (existingName) {
+                return res.status(400).send(failure("This reader name is taken."));
             }
-            const updatedReader = {
-                reader_name,
-                reader_email,
-                status,
-                balance
-            }
-            const result = await readerModel.findOneAndUpdate(
-                { _id: readerId }, // Find by _id
-                updatedReader, // Update with the new data
-                { new: true }
-            );
-            console.log(result)
-            if (!result) {
-                return res.status(400).send(failure("Can't find the reader"))
-            }
-            return res.status(200).send(success("Successfully updated the reader", result))
 
+            // Update the 'auth' collection
+            existingAuth.reader_name = reader_name;
+            existingAuth.status = status;
+            const updatedAuth = await existingAuth.save();
 
+            // Update the 'reader' collection
+            const existingReader = await readerModel.findOne({ reader_name: matchName });
+            console.log(existingReader)
+
+            if (existingReader) {
+                existingReader.reader_name = reader_name;
+                existingReader.status = status;
+                await existingReader.save();
+            }
+
+            return res.status(200).send(success("Successfully updated the reader data.", updatedAuth));
         } catch (error) {
-            console.log("error found", error)
-            res.status(500).send(failure("Internal server error"))
+            console.error("Error:", error);
+            return res.status(500).send(failure("Internal server error"));
         }
     }
+
+
 
     // Delete reader's data by admin
     async deleteUserData(req, res) {
         try {
             const { readerId } = req.params
-            const { reader_name, reader_email, status, balance } = req.body
 
-            const existingReader = await readerModel.findById(readerId)
-            if (!existingReader) {
+            const existingAuth = await authModel.findById(readerId)
+            if (!existingAuth) {
                 return res.status(400).send(failure("Reader not found."))
             }
-            await readerModel.findByIdAndDelete(readerId)
+            const matchName = existingAuth.reader_name
+            await authModel.findByIdAndDelete(readerId)
 
-            return res.status(200).send(success(`Successfully deleted the ${reader_name}'s information`))
+            await readerModel.findOneAndDelete({ reader_name: matchName });
+
+            return res.status(200).send(success("Successfully deleted the reader's information"))
 
 
         } catch (error) {
             console.log("error found", error)
-            res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 
@@ -136,27 +149,6 @@ class readerController {
             res.status(500).send(failure("Internal server error"))
         }
     }
-
-    //delete data by id
-    async deleteOneById(req, res) {
-        try {
-            const { id } = req.params; // Retrieve the id from req.params
-            // console.log(id);
-            const result = await readerModel.findOneAndDelete({ _id: id })
-            // console.log(result)
-            if (result) {
-                res.status(200).send(success("Successfully deleted the reader", result))
-            } else {
-                res.status(200).send(failure("Can't find the reader"))
-            }
-
-        } catch (error) {
-            console.log("error found", error)
-            res.status(500).send(failure("Internal server error"))
-        }
-    }
-
-
 }
 
 module.exports = new readerController()

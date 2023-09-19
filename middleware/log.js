@@ -2,9 +2,9 @@ const { success, failure } = require("../utils/success-error")
 const fs = require("fs")
 
 const logs = (req, res, next) => {
-    const formattedDate = new Date().toLocaleString();
 
     try {
+        const formattedDate = new Date().toLocaleString();
 
         // Create a log message with the timestamp
         const logMessage = `Request timestamp: ${formattedDate}, Method: ${req.method}, URL: ${req.url}\n`;
