@@ -12,23 +12,33 @@ class readerController {
 
     async updateByUser(req, res) {
         try {
-            console.log(validation)
             const { authorization } = req.headers
             const { balance } = req.body
 
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            const readerIdFromToken = decodedToken.payload.reader
-            const existingReader = await readerModel.findOne(new mongoose.Types.ObjectId(readerIdFromToken))
+            const readerIdFromToken = decodedToken.payload.reader_name
+
+            const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
 
             if (!existingReader) {
                 return res.status(400).send(failure("Reader not found!"))
             }
             existingReader.balance += balance
             existingReader.save()
-            return res.status(200).send(success("Successfully updated the balance.", existingReader))
-            // console.log(existingReader.balance)
+
+            const response = existingReader.toObject()
+
+            delete response._id
+            delete response.__v
+            delete response.createdAt
+            delete response.updatedAt
+            delete response.reader_email
+            delete response.status
+
+            return res.status(200).send(success("Successfully updated the balance.", response))
+
         } catch (error) {
             if (error instanceof jwt.JsonWebTokenError) {
                 return res.status(500).send(failure("Token is invalid", error))
@@ -99,7 +109,17 @@ class readerController {
                 await existingReader.save();
             }
 
-            return res.status(200).send(success("Successfully updated the reader data.", updatedAuth));
+            const responseAuth = updatedAuth.toObject()
+
+            delete responseAuth.password
+            delete responseAuth._id
+            delete responseAuth.loginAttempt
+            delete responseAuth.reader
+            delete responseAuth.__v
+            delete responseAuth.createdAt
+            delete responseAuth.updatedAt
+
+            return res.status(200).send(success("Successfully updated the reader data.", responseAuth));
         } catch (error) {
             console.error("Error:", error);
             return res.status(500).send(failure("Internal server error"));
@@ -135,14 +155,17 @@ class readerController {
     async getOneById(req, res) {
         try {
             const { id } = req.params; // Retrieve the id from req.params
-            // console.log(id);
             const result = await readerModel.findById({ _id: id })
-            // console.log(result)
-            if (result) {
-                res.status(200).send(success("Successfully received the reader", result))
-            } else {
-                res.status(200).send(failure("Can't find the reader"))
+            if (!result) {
+                return res.status(400).send(failure("Can't find the reader"))
             }
+
+            const response = result.toObject()
+
+            delete response._id
+            delete response.__v
+
+            return res.status(200).send(success("Successfully received the reader", response))
 
         } catch (error) {
             console.log("error found", error)

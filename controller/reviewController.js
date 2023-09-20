@@ -11,51 +11,69 @@ class reviewClass {
     //add data
     async add(req, res) {
         try {
+
+            const validation = validationResult(req).array()
+            if (validation.length > 0) {
+                console.log("validation error", validation)
+                return res.status(400).send(failure("Failed to add the book", validation))
+            }
+
             const { book, reader, rating, text } = req.body
 
             if (!book) {
                 return res.status(400).send(failure("Please enter a valid book id."))
             }
 
-            let existingBook = await bookModel.findById(new mongoose.Types.ObjectId(book))
-            let existingReader = await readerModel.findById(new mongoose.Types.ObjectId(reader))
-            const existingReview = await reviewModel.findOne({ book, reader })
+            try {
+                let existingBook = await bookModel.findById(new mongoose.Types.ObjectId(book))
+                let existingReader = await readerModel.findById(new mongoose.Types.ObjectId(reader))
+                const existingReview = await reviewModel.findOne({ book, reader })
 
-            if (existingReview) {
-                return res.status(400).send(failure("You have already added a review for this book. Please update it."))
+                if (existingReview) {
+                    return res.status(400).send(failure("You have already added a review for this book. Please update it."))
+                }
+                if ((!existingBook && !existingReader) || (!existingBook && existingReader) || (existingBook && !existingReader)) {
+                    return res.status(400).send(failure("Please provide a valid book or/and reader id."))
+                }
+                const review = new reviewModel({ book, reader, rating, text })
+
+                await review.save()
+                // Update the book's rating and get the new average rating
+                const reviews = await reviewModel.find({ book, rating: { $exists: true } }); // Only consider reviews with a rating property
+                let totalRating = 0;
+                let numberOfReviewsWithRatings = 0;
+
+                for (const rev of reviews) {
+                    totalRating += rev.rating;
+                    numberOfReviewsWithRatings++;
+                }
+
+                // to avoid divide by zero error
+                const averageRating = numberOfReviewsWithRatings > 0 ? totalRating / numberOfReviewsWithRatings : 0;
+
+                // Update the book's rating
+                await bookModel.findByIdAndUpdate(book, {
+                    rating: averageRating,
+                    $push: { reviews: review._id } // Add the review ID to the reviews array
+                });
+
+                console.log(`Average rating updated for book ${book} to ${averageRating}`)
+
+                const responseRev = review.toObject()
+
+                delete responseRev._id
+                delete responseRev.__v
+
+                return res.status(200).send(success("Successfully added the review", responseRev))
+            } catch (bsonError) {
+                // Handle the BSONError and send a custom error response
+                return res.status(400).send(failure("Invalid book or/ and reader ID."));
             }
-            if ((!existingBook && !existingReader) || (!existingBook && existingReader) || (existingBook && !existingReader)) {
-                return res.status(400).send(failure("Please provide a valid book or/and reader id."))
-            }
-            const review = new reviewModel({ book, reader, rating, text })
 
-            await review.save()
-            // Update the book's rating and get the new average rating
-            const reviews = await reviewModel.find({ book, rating: { $exists: true } }); // Only consider reviews with a rating property
-            let totalRating = 0;
-            let numberOfReviewsWithRatings = 0;
-
-            for (const rev of reviews) {
-                totalRating += rev.rating;
-                numberOfReviewsWithRatings++;
-            }
-
-            // to avoid divide by zero error
-            const averageRating = numberOfReviewsWithRatings > 0 ? totalRating / numberOfReviewsWithRatings : 0;
-
-            // Update the book's rating
-            await bookModel.findByIdAndUpdate(book, {
-                rating: averageRating,
-                $push: { reviews: review._id } // Add the review ID to the reviews array
-            });
-
-            console.log(`Average rating updated for book ${book} to ${averageRating}`)
-
-            return res.status(200).send(success("Successfully added the review", review))
 
         } catch (error) {
             console.error("Error while entering review:", error);
-            return res.status(500).send(failure("internal server error.", error))
+            return res.status(500).send(failure("internal server error."))
         }
     }
 
@@ -68,8 +86,10 @@ class reviewClass {
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            const readerIdFromToken = decodedToken.payload.reader
-            const existingReview = await reviewModel.findOne({ reader: readerIdFromToken, book: book })
+            const readerIdFromToken = decodedToken.payload.reader_name
+
+            const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
+            const existingReview = await reviewModel.findOne({ reader: existingReader._id, book: book })
 
             // Check if the review exists
             if (!existingReview) {
@@ -115,57 +135,18 @@ class reviewClass {
 
             console.log(`Average rating updated for book ${book} to ${averageRating}`)
 
-            return res.status(200).send(success("Successfully added the review", existingReview))
+            const responseRev = existingReview.toObject()
+
+            delete responseRev._id
+            delete responseRev.__v
+
+            return res.status(200).send(success("Successfully updated the review", responseRev))
 
         } catch (error) {
             console.log("error found", error)
-            res.status(500).send(failure("Internal server error", error))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
-
-    // //remove review text
-    // async removeReviewText(req, res) {
-    //     try {
-    //         const { authorization } = req.headers
-    //         const { book } = req.body
-
-    //         const token = authorization.split(' ')[1]
-    //         const decodedToken = jwt.decode(token, { complete: true })
-
-    //         const readerIdFromToken = decodedToken.payload.reader._id
-    //         try {
-    //             const existingReview = await reviewModel.findOne({ reader: readerIdFromToken, book: book })
-
-    //             console.log(existingReview)
-    //             // Check if the review exists
-    //             if (!existingReview) {
-    //                 return res.status(400).send(failure("The reader has not made any reviews."));
-    //             }
-    //             // if the rating is already removed by the reader
-    //             if (!existingReview.text) {
-    //                 return res.status(400).send(failure("You already removed the review text."))
-    //             }
-
-    //             // removing the rating and changing it to 0.
-    //             if (existingReview.text) {
-    //                 existingReview.text = '';
-    //                 await existingReview.save()
-    //                 return res.status(200).send(success("Removed the rating.", existingReview))
-    //             }
-    //             else {
-    //                 return res.status(400).send(failure("The reader has not made any transactions."))
-    //             }
-    //         } catch (bsonError) {
-    //             // Handle the BSONError and send a custom error response
-    //             return res.status(400).send(failure("Invalid book ID. Please provide a valid book ID."));
-    //         }
-
-
-    //     } catch (error) {
-    //         console.log("error found", error)
-    //         res.status(500).send(failure("Internal server error", error))
-    //     }
-    // }
 
 }
 

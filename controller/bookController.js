@@ -13,11 +13,9 @@ class bookController {
             if (validation.length > 0) {
                 return res.status(422).send({ message: "validation error", validation })
             }
-            else {
-                next()
-            }
+            next()
         } catch (error) {
-            return res.status(500).send(failure("internal server error.", error))
+            return res.status(500).send(failure("internal server error."))
         }
     }
 
@@ -30,7 +28,6 @@ class bookController {
                 return res.status(400).send(failure("Failed to add the book", validation))
             }
 
-            console.log(validation)
             const { title, author, genre, pages, price, stock, branch } = req.body
 
             if (!price || !stock) {
@@ -41,16 +38,14 @@ class bookController {
             if (existingBook) {
                 return res.status(400).send(failure("This book already exists!"))
             }
-            else {
-                const book = new bookModel({ title, author, genre, pages, price, stock, branch })
-                console.log(book)
-                await book.save()
+            const book = new bookModel({ title, author, genre, pages, price, stock, branch })
+            console.log(book)
+            await book.save()
 
-                return res.status(200).send(success("Successfully added the book"))
-            }
+            return res.status(200).send(success("Successfully added the book"))
         } catch (error) {
             console.error("Error while entering book:", error);
-            return res.status(500).send(failure("internal server error.", error))
+            return res.status(500).send(failure("internal server error."))
         }
     }
 
@@ -69,7 +64,7 @@ class bookController {
             }
 
             if (page < 1 || limit < 0) {
-                return res.status(500).send(failure("Page must be at least 1 and limit must be at least 0"))
+                return res.status(400).send(failure("Page must be at least 1 and limit must be at least 0"))
             }
 
             // sorting
@@ -155,11 +150,12 @@ class bookController {
                 })
                 .skip((page - 1) * limit)
                 .limit(limit)
+                .select('-_id -__v -reviews -discounts')
 
 
             if (result.length > 0) {
                 const paginationResult = {
-                    reader: result,
+                    books: result,
                     totalInCurrentPage: result.length,
                     currentPage: parseInt(page),
                     totalRecords: totalRecords
@@ -168,10 +164,10 @@ class bookController {
                     .status(200)
                     .send(success("Successfully received all books", paginationResult));
             }
-            return res.status(500).send(success("No book was found"));
+            return res.status(400).send(failure("No book was found"));
 
         } catch (error) {
-            return res.status(500).send(failure("internal server error.", error.message))
+            return res.status(500).send(failure("internal server error."))
         }
     }
 
@@ -190,8 +186,6 @@ class bookController {
                 title,
                 author
             })
-
-            console.log("dup", duplicateBook)
 
             if (duplicateBook) {
                 return res.status(400).send(failure("Book already exists."))
@@ -212,7 +206,7 @@ class bookController {
 
         } catch (error) {
             console.log("error found", error)
-            res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 
@@ -232,75 +226,34 @@ class bookController {
 
         } catch (error) {
             console.log("error found", error)
-            res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 
-    // //get one data by id
-    // async getOneById(req, res) {
-    //     try {
-    //         const { id } = req.params;
-    //         const result = await bookModel.findById({ _id: id })
-    //             .populate({
-    //                 path: "reviews",
-    //                 populate: {
-    //                     path: "reader",
-    //                     model: "Reader",
-    //                     select: "reader_name",
-    //                 },
-    //                 select: "rating text",
-    //             });
-    //         console.log(result)
-    //         if (result) {
-    //             res.status(200).send(success("Successfully received the book", result))
-    //         } else {
-    //             res.status(200).send(failure("Can't find the book"))
-    //         }
+    //get one data by id
+    async getOneById(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await bookModel.findById({ _id: id })
+                .select("title author -_id")
+                .populate({
+                    path: "reviews",
+                    select: "reader rating text -_id",
+                    populate: {
+                        path: "reader",
+                        select: "reader_name -_id",
+                    },
+                });
+            if (!result) {
+                return res.status(400).send(failure("Can't find the book"))
+            }
+            return res.status(200).send(success("Successfully received the book", result))
 
-    //     } catch (error) {
-    //         console.log("error found", error)
-    //         res.status(500).send(failure("Internal server error"))
-    //     }
-    // }
 
-    // //delete data by id
-    // async deleteOneById(req, res) {
-    //     try {
-    //         const { id } = req.params;
-    //         console.log(id);
-    //         const result = await bookModel.findOneAndDelete({ _id: id })
-    //         if (result) {
-    //             res.status(200).send(success("Successfully deleted the book", result))
-    //         } else {
-    //             res.status(200).send(failure("Can't find the book"))
-    //         }
-
-    //     } catch (error) {
-    //         console.log("error found", error)
-    //         res.status(500).send(failure("Internal server error", error))
-    //     }
-    // }
-
-    // //updatedatabyid
-    // async updateOneById(req, res) {
-    //     try {
-    //         // const { reader_name, reader_email, read } = req.body
-    //         const { id } = req.params; // Retrieve the id from req.params
-    //         // console.log(id);
-    //         const options = { upsert: true };
-    //         const result = await bookModel.findByIdAndUpdate(id, req.body, options);
-    //         // console.log(result)
-    //         if (result) {
-    //             res.status(200).send(success("Successfully updated the reader", result))
-    //         } else {
-    //             res.status(200).send(failure("Can't find the reader"))
-    //         }
-
-    //     } catch (error) {
-    //         console.log("error found", error)
-    //         res.status(500).send(failure("Internal server error"))
-    //     }
-    // }
+        } catch (error) {
+            return res.status(500).send(failure("Internal server error"))
+        }
+    }
 }
 
 module.exports = new bookController()

@@ -15,11 +15,9 @@ class AuthController {
         try {
             const validation = validationResult(req).array()
             if (validation.length > 0) {
-                return res.status(422).send({ message: "validation error", validation })
+                return res.status(400).send({ message: "validation error", validation })
             }
-            else {
-                next()
-            }
+            next()
         } catch (error) {
             console.log("error has occured")
         }
@@ -40,11 +38,11 @@ class AuthController {
             const timeToLogin = new Date(auth.updatedAt.getTime() + 15 * 1000);
             if (auth.loginAttempt >= 3) {
                 console.log("Too many failed login attempts. Try again in " + (timeToLogin - currentTime) / 1000 + " seconds")
-                if ((timeToLogin - currentTime) / 1000 <= 0) {
-                    auth.loginAttempt = 0;
-                    await auth.save();
+                if (timeToLogin - currentTime > 0) {
+                    return res.status(401).send(failure(`Too many login attempts. Try again in ${(timeToLogin - currentTime) / 1000} seconds.`));
                 }
-                return res.status(401).send(failure(`Too many login attempts. Try again in ${(timeToLogin - currentTime) / 1000} seconds.`));
+                auth.loginAttempt = 0;
+                await auth.save();
             }
             // if user tries to log in with wrong password, the loginAttempt property will increase 
             auth.loginAttempt++
@@ -54,7 +52,7 @@ class AuthController {
             console.log(checkPassword)
 
             if (!checkPassword) {
-                return res.status(500).send(failure("Authentication failed"))
+                return res.status(400).send(failure("Authentication failed"))
             }
 
             // If the password is right, the loginAttempt property will be 0
@@ -62,11 +60,12 @@ class AuthController {
             await auth.save();
 
             const responseAuth = auth.toObject()
-            console.log(responseAuth)
 
             delete responseAuth.password
             delete responseAuth._id
             delete responseAuth.loginAttempt
+            delete responseAuth.reader
+            delete responseAuth.__v
             delete responseAuth.createdAt
             delete responseAuth.updatedAt
 
@@ -78,7 +77,7 @@ class AuthController {
 
             return res.status(200).send(success("Login successful", responseAuth))
         } catch (error) {
-            return res.status(500).send(failure("Internal server error", error))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 
@@ -87,11 +86,8 @@ class AuthController {
         try {
             const validation = validationResult(req).array()
             if (validation.length > 0) {
-                console.log("validation error", validation)
                 return res.status(400).send(failure("Failed to add the user", validation))
             }
-
-            console.log(validation)
 
             const { reader_name, reader_email, password, status, balance } = req.body
             const existingReader = await authModel.findOne({ reader_name, reader_email })
@@ -117,9 +113,19 @@ class AuthController {
                 reader: readerInfo._id
             })
 
-            return res.status(200).send(success("Successfully added the user"))
+            const responseAuth = result.toObject()
+
+            delete responseAuth.password
+            delete responseAuth._id
+            delete responseAuth.loginAttempt
+            delete responseAuth.reader
+            delete responseAuth.__v
+            delete responseAuth.createdAt
+            delete responseAuth.updatedAt
+
+            return res.status(200).send(success("Successfully added the user", responseAuth))
         } catch (error) {
-            return res.status(500).send(failure("Internal server error", error))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 }

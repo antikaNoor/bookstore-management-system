@@ -1,6 +1,6 @@
 const express = require('express')
 const routes = express()
-const { authValidator, bookValidator, discountValidator, readerEditValidator } = require('../middleware/validation')
+const { authValidator, bookValidator, discountValidator, readerEditValidator, reviewValidator } = require('../middleware/validation')
 // const logs = require('../middleware/log')
 const AuthController = require('../controller/authController')
 

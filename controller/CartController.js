@@ -18,9 +18,7 @@ class transactionController {
             if (validation.length > 0) {
                 return res.status(422).send({ message: "validation error", validation })
             }
-            else {
-                next()
-            }
+            next()
         } catch (error) {
             console.log("error has occured")
         }
@@ -41,9 +39,9 @@ class transactionController {
                 return res.status(400).send(failure("Amount cannot be 0."))
             }
 
+            let totalSpent = 0
             let existingTransaction = await cartModel.findOne({ reader });
 
-            // console.log("readerrrr", existingTransaction)
             if (existingTransaction) {
                 // finding the index of the book in the array
                 let existingBookEntryIndex = -1
@@ -63,7 +61,6 @@ class transactionController {
                 else {
                     // enter new object inside the array
                     console.log("entering new book for existing user")
-                    console.log(bought_books.amount)
                     existingTransaction.bought_books.push({
                         id: new mongoose.Types.ObjectId(bought_books.id),
                         quantity: bought_books.amount
@@ -93,10 +90,30 @@ class transactionController {
 
             }
 
+            // Calculate the total spent for this transaction
+            for (const book of existingTransaction.bought_books) {
+                const bookData = await bookModel.findById(book.id);
+                if (!bookData) {
+                    return res.status(400).send(failure("Book with ID ${book.title} not found"));
+                }
+
+                totalSpent += bookData.price * book.quantity;
+            }
+
+            // Update the total_spent field
+            existingTransaction.total_spent = totalSpent;
+
+            await existingTransaction.save();
+
             await existingTransaction.save()
             console.log(existingTransaction)
 
-            return res.status(200).send(success("Successfully added to the cart", existingTransaction))
+            const responseCart = existingTransaction.toObject()
+
+            delete responseCart._id
+            delete responseCart.__v
+
+            return res.status(200).send(success("Successfully added to the cart", responseCart))
         } catch (error) {
             console.error("Error while adding to cart:", error);
             return res.status(500).send(failure("Internal server error"))
@@ -172,29 +189,17 @@ class transactionController {
 
             await existingTransaction.save();
 
-            return res.status(200).send(success("Successfully deleted from cart", existingTransaction))
+            const responseCart = existingTransaction.toObject()
+
+            delete responseCart._id
+            delete responseCart.__v
+
+            return res.status(200).send(success("Successfully deleted from cart", responseCart))
         } catch (error) {
             console.error("Error while deleting transaction:", error);
             return res.status(500).send(failure("Internal server error"))
         }
     }
-
-    // async getAll(req, res) {
-    //     try {
-    //         const result = await cartModel.aggregate({
-    //             $group: {
-    //                 _id: false,
-    //                 total: { $sum: "$total_spent" }
-    //             }
-    //         })
-    //         console.log(result)
-    //         return res.status(200).send(success("Successfully got all from cart", result))
-    //     }
-    //     catch (error) {
-    //         console.error("Error while getting data from cart:", error);
-    //         return res.status(500).send(failure("Internal server error"))
-    //     }
-    // }
 
     //get the reader's cart
     async showCart(req, res) {
@@ -204,16 +209,20 @@ class transactionController {
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            const readerIdFromToken = decodedToken.payload.reader
-            console.log("this is from the cart controller", readerIdFromToken)
-            const existingCart = await cartModel.findOne({ reader: readerIdFromToken })
+            const readerIdFromToken = decodedToken.payload.reader_name
 
-            if (existingCart) {
-                res.status(200).send(success("Got the data from the cart", existingCart))
+            const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
+            const existingCart = await cartModel.findOne({ reader: existingReader._id })
+
+            if (!existingCart) {
+                return res.status(400).send(failure("This cart does not exist."))
             }
-            else {
-                res.status(400).send(failure("This cart does not exist."))
-            }
+            const responseCart = existingCart.toObject()
+
+            delete responseCart._id
+            delete responseCart.__v
+            return res.status(200).send(success("Got the data from the cart", responseCart))
+
 
         } catch (error) {
             console.log("error found", error)
@@ -233,34 +242,28 @@ class transactionController {
             const { cart } = req.body
             const { authorization } = req.headers
 
-            if (!authorization) {
-                return res.status(500).send(failure("Authorization failed..."));
-            }
-
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            if (!decodedToken) {
-                return res.status(500).send(failure("Authorization failed"));
-            }
+            const readerIdFromToken = decodedToken.payload.reader_name
 
-            const readerIdFromToken = decodedToken.payload.reader
+            const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
+            const existingEntity = await cartModel.findOne({ reader: existingReader._id })
 
             // if there is nothing in the body
             if (!cart) {
-                return res.status(500).send(failure("Provide a cart id"))
+                return res.status(400).send(failure("Provide a cart id"))
             }
 
             let existingCart = await cartModel.findById(new mongoose.Types.ObjectId(cart))
-            console.log(readerIdFromToken.toString())
-            console.log(existingCart.reader.toString())
-            if (readerIdFromToken.toString() !== existingCart.reader.toString()) {
+
+            if (existingEntity.reader.toString() !== existingCart.reader.toString()) {
                 return res.status(400).send(failure("Unauthorized reader"))
             }
             if (existingCart) {
                 // cart exists but the array is empty
                 if (existingCart.bought_books.length === 0) {
-                    return res.status(500).send(failure("Cart does not exist."))
+                    return res.status(400).send(failure("Cart does not exist."))
                 }
 
                 // Calculate the price for this transaction
@@ -282,7 +285,6 @@ class transactionController {
                 const totalSpent = existingCart.total_spent
                 const reader = existingCart.reader
 
-                // console.log(existingCart.reader)
 
                 const existingReader = await readerModel.findOne(reader)
                 console.log(existingCart.total_spent)
@@ -303,10 +305,16 @@ class transactionController {
 
                 // deleting the cart from cart schema
                 await cartModel.findOneAndDelete(new mongoose.Types.ObjectId(cart))
-                return res.status(200).send(success("Successfully checked out from cart", existingCart))
+
+                const responseCart = existingCart.toObject()
+
+                delete responseCart._id
+                delete responseCart.__v
+
+                return res.status(200).send(success("Successfully checked out from cart", responseCart))
             }
             else {
-                return res.status(500).send(failure("cart does not exist"))
+                return res.status(400).send(failure("cart does not exist"))
             }
 
         } catch (error) {
@@ -329,17 +337,20 @@ class transactionController {
             const token = authorization.split(' ')[1]
             const decodedToken = jwt.decode(token, { complete: true })
 
-            const readerIdFromToken = decodedToken.payload.reader
-            console.log("this is from the cart controller", readerIdFromToken)
-            const existingTransaction = await orderModel.find({ reader: readerIdFromToken })
+            const readerIdFromToken = decodedToken.payload.reader_name
 
-            // console.log(existingTransaction)
-            if (existingTransaction) {
-                res.status(200).send(success("Got the data from transaction.", existingTransaction))
+            const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
+            const existingTransaction = await orderModel.findOne({ reader: existingReader._id })
+
+            if (!existingTransaction) {
+                return res.status(400).send(failure("The reader has not made any transactions."))
             }
-            else {
-                res.status(400).send(failure("The reader has not made any transactions."))
-            }
+            const responseCart = existingTransaction.toObject()
+
+            delete responseCart._id
+            delete responseCart.__v
+            return res.status(200).send(success("Got the data from transaction.", responseCart))
+
 
         } catch (error) {
             console.log("error found", error)
@@ -349,48 +360,43 @@ class transactionController {
             if (error instanceof jwt.TokenExpiredError) {
                 return res.status(500).send(failure("Token is expired", error))
             }
-            res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 
     //get all data
-    async getAll(req, res) {
+    async getAllTransactions(req, res) {
         try {
-            // console.log(req.name)
             const result = await orderModel.find({})
-                .populate("reader", "-password")
-                .populate("bought_books.id")
-            console.log(result)
+                .select("-_id -__v")
             if (result.length > 0) {
                 return res
                     .status(200)
                     .send(success("Successfully received all transactions", result));
             }
-            return res.status(500).send(success("No transactions were found"));
+            return res.status(400).send(failure("No transactions were found"));
 
         } catch (error) {
-            res.status(500).send(failure(error.message))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 
-    //     //get one data by id
-    //     async getOneById(req, res) {
-    //         try {
-    //             const { id } = req.params; // Retrieve the id from req.params
-    //             // console.log(id);
-    //             const result = await bookModel.findById({ _id: id })
-    //             // console.log(result)
-    //             if (result) {
-    //                 res.status(200).send(success("Successfully received the reader", result))
-    //             } else {
-    //                 res.status(200).send(failure("Can't find the reader"))
-    //             }
+    // get all carts
+    async getAllCarts(req, res) {
+        try {
+            const result = await cartModel.find({})
+                .select("-_id -__v")
+            if (result.length > 0) {
+                return res
+                    .status(200)
+                    .send(success("Successfully received all transactions", result));
+            }
+            return res.status(400).send(success("No cart was found"));
 
-    //         } catch (error) {
-    //             console.log("error found", error)
-    //             res.status(500).send(failure("Internal server error"))
-    //         }
-    //     }
+        } catch (error) {
+            return res.status(500).send(failure("Internal server error"))
+        }
+    }
 }
 
 module.exports = new transactionController()

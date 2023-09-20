@@ -113,9 +113,21 @@ const readerEditValidator = {
     ]
 }
 
+const reviewValidator = {
+    create: [
+        body("rating")
+            .isFloat()
+            .withMessage("Enter a float value."),
+        body("text")
+            .isString()
+            .withMessage("Review text must be string.")
+    ]
+}
+
 module.exports = {
     authValidator,
     bookValidator,
     discountValidator,
-    readerEditValidator
+    readerEditValidator,
+    reviewValidator
 }
