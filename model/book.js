@@ -13,6 +13,9 @@ const bookSchema = new mongoose.Schema({
     genre: {
         type: [String],
     },
+    image: {
+        type: String
+    },
     pages: {
         type: Number,
     },
