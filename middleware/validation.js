@@ -66,8 +66,8 @@ const bookValidator = {
             .withMessage("Price must be a number.")
             .bail()
             .custom((value) => {
-                if (value === 0) {
-                    throw new Error("Price cannot be 0.")
+                if (value <= 0) {
+                    throw new Error("Price cannot be 0 or negative.")
                 }
                 return true
             }),
@@ -76,8 +76,8 @@ const bookValidator = {
             .withMessage("Price must be a number.")
             .bail()
             .custom((value) => {
-                if (value === 0) {
-                    throw new Error("Stock cannot be 0.")
+                if (value <= 0) {
+                    throw new Error("Stock cannot be 0 or negative.")
                 }
                 return true
             })
@@ -91,8 +91,8 @@ const discountValidator = {
             .withMessage("Percentage must be a number.")
             .bail()
             .custom((value) => {
-                if (value === 100) {
-                    throw new Error("100% discount cannot be applied.")
+                if (value >= 100) {
+                    throw new Error("100% or more discount cannot be applied.")
                 }
                 return true
             })

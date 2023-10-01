@@ -23,6 +23,9 @@ const bookSchema = new mongoose.Schema({
         type: Number,
         required: [true, "Price should be provided"]
     },
+    description: {
+        type: String,
+    },
     stock: {
         type: Number,
         required: [true, "Stock should be provided"]

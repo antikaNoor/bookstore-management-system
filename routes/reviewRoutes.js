@@ -6,7 +6,7 @@ const { checkLogin, isAdmin } = require('../middleware/auth')
 const reviewController = require('../controller/reviewController')
 
 
-routes.post("/add-review", checkLogin, reviewController.add)
-routes.put("/update-review", checkLogin, reviewController.updateReview)
+routes.post("/add-review", reviewController.add)
+routes.put("/update-review", reviewController.updateReview)
 
 module.exports = routes
