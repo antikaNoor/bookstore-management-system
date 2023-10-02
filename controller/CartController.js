@@ -105,7 +105,7 @@ class transactionController {
 
             await existingTransaction.save();
 
-            await existingTransaction.save()
+            // await existingTransaction.save()
             console.log(existingTransaction)
 
             const responseCart = existingTransaction.toObject()
@@ -249,6 +249,10 @@ class transactionController {
 
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
             const existingEntity = await cartModel.findOne({ reader: existingReader._id })
+
+            if (!existingEntity) {
+                return res.status(400).send(failure("Unauthorized reader"))
+            }
 
             // if there is nothing in the body
             if (!cart) {

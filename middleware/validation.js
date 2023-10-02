@@ -66,7 +66,7 @@ const bookValidator = {
             .withMessage("Price must be a number.")
             .bail()
             .custom((value) => {
-                if (value === 0) {
+                if (value <= 0) {
                     throw new Error("Price cannot be 0.")
                 }
                 return true
@@ -76,7 +76,7 @@ const bookValidator = {
             .withMessage("Price must be a number.")
             .bail()
             .custom((value) => {
-                if (value === 0) {
+                if (value <= 0) {
                     throw new Error("Stock cannot be 0.")
                 }
                 return true

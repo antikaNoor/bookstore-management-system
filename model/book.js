@@ -13,6 +13,9 @@ const bookSchema = new mongoose.Schema({
     genre: {
         type: [String],
     },
+    description: {
+        type: String
+    },
     pages: {
         type: Number,
     },
@@ -23,6 +26,9 @@ const bookSchema = new mongoose.Schema({
     stock: {
         type: Number,
         required: [true, "Stock should be provided"]
+    },
+    image: {
+        type: String
     },
     branch: {
         type: [String],

@@ -7,4 +7,4 @@ const AuthController = require('../controller/authController')
 routes.post("/signup", authValidator.signup, AuthController.create, AuthController.signup)
 routes.post("/login", AuthController.login)
 
-module.exports = routes
+module.exports = routes 

@@ -11,7 +11,7 @@ class bookController {
         try {
             const validation = validationResult(req).array()
             if (validation.length > 0) {
-                return res.status(422).send({ message: "validation error", validation })
+                return res.status(400).send(failure("Validation"))
             }
             next()
         } catch (error) {
@@ -28,7 +28,7 @@ class bookController {
                 return res.status(400).send(failure("Failed to add the book", validation))
             }
 
-            const { title, author, genre, pages, price, stock, branch } = req.body
+            const { title, author, genre, description, pages, price, stock, branch, image } = req.body
 
             if (!price || !stock) {
                 return res.status(400).send(failure("Price and stock must be provided"))
@@ -38,7 +38,7 @@ class bookController {
             if (existingBook) {
                 return res.status(400).send(failure("This book already exists!"))
             }
-            const book = new bookModel({ title, author, genre, pages, price, stock, branch })
+            const book = new bookModel({ title, author, genre, description, pages, price, stock, branch, image })
             console.log(book)
             await book.save()
 
@@ -52,7 +52,7 @@ class bookController {
     //get all data
     async getAll(req, res) {
         try {
-            let { page, limit, sortParam, sortOrder, pagesMin, pagesMax, priceMin, priceMax, stockMin, stockMax, search } = req.query
+            let { page, limit, sortParam, sortOrder, pagesMin, pagesMax, priceMin, priceMax, ratingMin, ratingMax, stockMin, stockMax, search } = req.query
 
             let result = 0
             // Total number of records in the whole collection
@@ -60,7 +60,7 @@ class bookController {
 
             if (!page || !limit) {
                 page = 1
-                limit = totalRecords / page
+                limit = 6
             }
 
             if (page < 1 || limit < 0) {
@@ -71,7 +71,7 @@ class bookController {
             if (
                 (sortParam && !sortOrder) ||
                 (!sortParam && sortOrder) ||
-                (sortParam && sortParam !== "pages" && sortParam !== "price" && sortParam !== "stock") ||
+                (sortParam && sortParam !== "pages" && sortParam !== "price" && sortParam !== "stock" && sortParam !== "rating") ||
                 (sortOrder && sortOrder !== "asc" && sortOrder !== "desc")
             ) {
                 return res.status(400).send(failure("Invalid sort parameters provided."));
@@ -134,6 +134,25 @@ class bookController {
 
             }
 
+            if (ratingMin && ratingMax) {
+                if (ratingMin > ratingMax) {
+                    return res.status(400).send(failure("Minimum rating cannot be greater than maximum rating."));
+                }
+                filter.rating = {
+                    $gte: parseFloat(ratingMin),
+                    $lte: parseFloat(ratingMax)
+                }
+
+            }
+            if (ratingMin && !ratingMax) {
+                filter.rating = { $gte: parseFloat(ratingMin) }
+
+            }
+            if (!ratingMin && ratingMax) {
+                filter.rating = { $lte: parseFloat(ratingMax) }
+
+            }
+
             // search
             if (search) {
                 filter["$or"] = [
@@ -145,12 +164,14 @@ class bookController {
 
             // Pagination
             result = await bookModel.find(filter)
-                .sort({
+                .sort(sortParam ? {
                     [sortParam]: sortOrder === "asc" ? 1 : -1,
+                } : {
+                    _id: 1
                 })
                 .skip((page - 1) * limit)
                 .limit(limit)
-                .select('-_id -__v -reviews -discounts')
+                .select('-__v -reviews -discounts')
 
 
             if (result.length > 0) {
@@ -176,7 +197,7 @@ class bookController {
         try {
             const { bookId } = req.params
 
-            const { title, author, genre, pages, price, stock, branch } = req.body
+            const { title, author, genre, description, pages, price, stock, branch, image } = req.body
             const existingBook = await bookModel.findById(bookId)
             if (!existingBook) {
                 return res.status(400).send(failure("Book not found."))
@@ -191,7 +212,7 @@ class bookController {
                 return res.status(400).send(failure("Book already exists."))
             }
             const updatedBook = {
-                title, author, genre, pages, price, stock, branch
+                title, author, genre, description, pages, price, stock, branch
             }
             const result = await bookModel.findOneAndUpdate(
                 { _id: bookId }, // Find by _id
@@ -232,18 +253,19 @@ class bookController {
 
     //get one data by id
     async getOneById(req, res) {
+        console.log(req.params)
         try {
             const { id } = req.params;
             const result = await bookModel.findById({ _id: id })
-                .select("title author -_id")
-                .populate({
-                    path: "reviews",
-                    select: "reader rating text -_id",
-                    populate: {
-                        path: "reader",
-                        select: "reader_name -_id",
-                    },
-                });
+            // .select("title author -_id")
+            // .populate({
+            //     path: "reviews",
+            //     select: "reader rating text -_id",
+            //     populate: {
+            //         path: "reader",
+            //         select: "reader_name -_id",
+            //     },
+            // });
             if (!result) {
                 return res.status(400).send(failure("Can't find the book"))
             }

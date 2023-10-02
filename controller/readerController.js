@@ -126,8 +126,6 @@ class readerController {
         }
     }
 
-
-
     // Delete reader's data by admin
     async deleteUserData(req, res) {
         try {
