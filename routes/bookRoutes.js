@@ -7,7 +7,7 @@ const bookController = require("../controller/bookController")
 
 routes.post("/add-book", bookValidator.create, bookController.add)
 routes.get("/get-all-books", bookController.getAll)
-routes.get("/get-book-review/:id", bookController.getOneById)
+routes.get("/get-book-by-id/:id", bookController.getOneById)
 routes.patch("/edit-book/:bookId", bookController.editBookData)
 routes.delete("/delete-book/:bookId", bookController.deleteBookData)
 

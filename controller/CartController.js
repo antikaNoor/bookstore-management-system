@@ -1,5 +1,6 @@
 const bookModel = require('../model/book')
 const readerModel = require('../model/reader')
+const authModel = require('../model/auth')
 const cartModel = require('../model/cart')
 const discountModel = require('../model/discount')
 const { success, failure } = require('../utils/success-error')
@@ -344,16 +345,18 @@ class transactionController {
             const readerIdFromToken = decodedToken.payload.reader_name
 
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
-            const existingTransaction = await orderModel.findOne({ reader: existingReader._id })
+            const existingTransaction = await orderModel.find({ reader: existingReader._id })
+                .populate("bought_books.id")
 
             if (!existingTransaction) {
                 return res.status(400).send(failure("The reader has not made any transactions."))
             }
-            const responseCart = existingTransaction.toObject()
+            console.log(existingTransaction)
+            // const responseCart = existingTransaction.toObject()
 
-            delete responseCart._id
-            delete responseCart.__v
-            return res.status(200).send(success("Got the data from transaction.", responseCart))
+            // delete responseCart._id
+            // delete responseCart.__v
+            return res.status(200).send(success("Got the data from transaction.", existingTransaction))
 
 
         } catch (error) {

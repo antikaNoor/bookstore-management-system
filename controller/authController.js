@@ -62,9 +62,8 @@ class AuthController {
             const responseAuth = auth.toObject()
 
             delete responseAuth.password
-            delete responseAuth._id
             delete responseAuth.loginAttempt
-            delete responseAuth.reader
+            // delete responseAuth.reader
             delete responseAuth.__v
             delete responseAuth.createdAt
             delete responseAuth.updatedAt
@@ -77,7 +76,7 @@ class AuthController {
 
             return res.status(200).send(success("Login successful", responseAuth))
         } catch (error) {
-            return res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error", error))
         }
     }
 
@@ -125,7 +124,7 @@ class AuthController {
 
             return res.status(200).send(success("Successfully added the user", responseAuth))
         } catch (error) {
-            return res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error", error))
         }
     }
 }
