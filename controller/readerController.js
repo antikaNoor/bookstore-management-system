@@ -109,14 +109,22 @@ class readerController {
                 await existingReader.save();
             }
 
-            return res.status(200).send(success("Successfully updated the reader data.", updatedAuth));
+            const responseAuth = updatedAuth.toObject()
+
+            delete responseAuth.password
+            delete responseAuth._id
+            delete responseAuth.loginAttempt
+            delete responseAuth.reader
+            delete responseAuth.__v
+            delete responseAuth.createdAt
+            delete responseAuth.updatedAt
+
+            return res.status(200).send(success("Successfully updated the reader data.", responseAuth));
         } catch (error) {
             console.error("Error:", error);
             return res.status(500).send(failure("Internal server error"));
         }
     }
-
-
 
     // Delete reader's data by admin
     async deleteUserData(req, res) {
@@ -145,14 +153,17 @@ class readerController {
     async getOneById(req, res) {
         try {
             const { id } = req.params; // Retrieve the id from req.params
-            // console.log(id);
             const result = await readerModel.findById({ _id: id })
-            // console.log(result)
-            if (result) {
-                res.status(200).send(success("Successfully received the reader", result))
-            } else {
-                res.status(200).send(failure("Can't find the reader"))
+            if (!result) {
+                return res.status(400).send(failure("Can't find the reader"))
             }
+
+            const response = result.toObject()
+
+            delete response._id
+            delete response.__v
+
+            return res.status(200).send(success("Successfully received the reader", response))
 
         } catch (error) {
             console.log("error found", error)

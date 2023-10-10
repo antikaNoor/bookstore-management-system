@@ -1,5 +1,6 @@
 const bookModel = require('../model/book')
 const readerModel = require('../model/reader')
+const authModel = require('../model/auth')
 const cartModel = require('../model/cart')
 const discountModel = require('../model/discount')
 const { success, failure } = require('../utils/success-error')
@@ -18,9 +19,7 @@ class transactionController {
             if (validation.length > 0) {
                 return res.status(422).send({ message: "validation error", validation })
             }
-            else {
-                next()
-            }
+            next()
         } catch (error) {
             console.log("error has occured")
         }
@@ -96,7 +95,7 @@ class transactionController {
             for (const book of existingTransaction.bought_books) {
                 const bookData = await bookModel.findById(book.id);
                 if (!bookData) {
-                    return res.status(400).send(failure("Book with ID ${book.title} not found"));
+                    return res.status(400).send(failure(`Book with ID ${book.title} not found`));
                 }
 
                 totalSpent += bookData.price * book.quantity;
@@ -107,7 +106,7 @@ class transactionController {
 
             await existingTransaction.save();
 
-            await existingTransaction.save()
+            // await existingTransaction.save()
             console.log(existingTransaction)
 
             const responseCart = existingTransaction.toObject()
@@ -203,23 +202,6 @@ class transactionController {
         }
     }
 
-    // async getAll(req, res) {
-    //     try {
-    //         const result = await cartModel.aggregate({
-    //             $group: {
-    //                 _id: false,
-    //                 total: { $sum: "$total_spent" }
-    //             }
-    //         })
-    //         console.log(result)
-    //         return res.status(200).send(success("Successfully got all from cart", result))
-    //     }
-    //     catch (error) {
-    //         console.error("Error while getting data from cart:", error);
-    //         return res.status(500).send(failure("Internal server error"))
-    //     }
-    // }
-
     //get the reader's cart
     async showCart(req, res) {
         try {
@@ -232,13 +214,13 @@ class transactionController {
 
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
             const existingCart = await cartModel.findOne({ reader: existingReader._id })
+                .populate("bought_books.id")
 
             if (!existingCart) {
                 return res.status(400).send(failure("This cart does not exist."))
             }
             const responseCart = existingCart.toObject()
 
-            delete responseCart._id
             delete responseCart.__v
             return res.status(200).send(success("Got the data from the cart", responseCart))
 
@@ -268,6 +250,10 @@ class transactionController {
 
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
             const existingEntity = await cartModel.findOne({ reader: existingReader._id })
+
+            if (!existingEntity || !existingEntity.reader) {
+                return res.status(400).send(failure("Unauthorized reader"))
+            }
 
             // if there is nothing in the body
             if (!cart) {
@@ -359,16 +345,18 @@ class transactionController {
             const readerIdFromToken = decodedToken.payload.reader_name
 
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
-            const existingTransaction = await orderModel.findOne({ reader: existingReader._id })
+            const existingTransaction = await orderModel.find({ reader: existingReader._id })
+                .populate("bought_books.id")
 
             if (!existingTransaction) {
                 return res.status(400).send(failure("The reader has not made any transactions."))
             }
-            const responseCart = existingTransaction.toObject()
+            console.log(existingTransaction)
+            // const responseCart = existingTransaction.toObject()
 
-            delete responseCart._id
-            delete responseCart.__v
-            return res.status(200).send(success("Got the data from transaction.", responseCart))
+            // delete responseCart._id
+            // delete responseCart.__v
+            return res.status(200).send(success("Got the data from transaction.", existingTransaction))
 
 
         } catch (error) {
@@ -393,7 +381,7 @@ class transactionController {
                     .status(200)
                     .send(success("Successfully received all transactions", result));
             }
-            return res.status(500).send(success("No transactions were found"));
+            return res.status(400).send(failure("No transactions were found"));
 
         } catch (error) {
             return res.status(500).send(failure("Internal server error"))
@@ -416,25 +404,6 @@ class transactionController {
             return res.status(500).send(failure("Internal server error"))
         }
     }
-
-    //     //get one data by id
-    //     async getOneById(req, res) {
-    //         try {
-    //             const { id } = req.params; // Retrieve the id from req.params
-    //             // console.log(id);
-    //             const result = await bookModel.findById({ _id: id })
-    //             // console.log(result)
-    //             if (result) {
-    //                 res.status(200).send(success("Successfully received the reader", result))
-    //             } else {
-    //                 res.status(200).send(failure("Can't find the reader"))
-    //             }
-
-    //         } catch (error) {
-    //             console.log("error found", error)
-    //             res.status(500).send(failure("Internal server error"))
-    //         }
-    //     }
 }
 
 module.exports = new transactionController()

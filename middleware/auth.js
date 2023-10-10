@@ -9,6 +9,9 @@ dotenv.config()
 
 const checkLogin = (req, res, next) => {
     const { authorization } = req.headers
+    // const { reader } = req.body
+    // const existingReader = await readerModel.findById(new mongoose.Types.ObjectId(reader))
+    // console.log(existingReader.reader_email)
     try {
         if (authorization) {
             const token = authorization.split(' ')[1]
@@ -60,46 +63,40 @@ const isAdmin = (req, res, next) => {
     }
 }
 
-// const isVerified = async (req, res, next) => {
-//     try {
-//         const { authorization } = req.headers
-//         if (!authorization) {
-//             return res.status(500).send(failure("Authorization failed..."));
-//         }
+const isVerified = async (req, res, next) => {
+    try {
+        const { authorization } = req.headers
+        const { reader } = req.body
+        const existingReader = await readerModel.findById(new mongoose.Types.ObjectId(reader))
 
-//         const token = authorization.split(' ')[1]
-//         const decodedToken = jwt.decode(token, { complete: true })
+        if (!existingReader) {
+            return res.status(400).send(failure("Reader not found"));
+        }
 
-//         if (!decodedToken) {
-//             return res.status(500).send(failure("Authorization failed"));
-//         }
+        const token = authorization.split(' ')[1]
+        // const decodedToken = jwt.decode(token, { complete: true })
 
-//         const readerIdFromToken = decodedToken.payload.reader
-//         if (readerIdFromToken) {
+        // if (!decodedToken) {
+        //     return res.status(400).send(failure("Authorization failed"));
+        // }
 
-//             // The token belongs to the same reader, so they are verified to perform the action
-//             next();
-//         }
-//         // else if (readerIdFromToken.toString() === req.body.reader.toString()) {
+        const verified = jwt.verify(token, process.env.JWT_SECRET)
 
-//         //     console.log("the id is", req.body.reader)
-//         //     // The token belongs to the same reader, so they are verified to perform the action
-//         //     next();
-//         // }
-//         // else if (readerIdFromToken && req.url === '/checkout') {
-//         //     // console.log("the id is", req.body.reader)
-//         //     // The token belongs to the same reader, so they are verified to perform the action
-//         //     next();
-//         // }
-//         else {
-//             return res.status(400).send(failure("Authorization failed: Token does not match the reader"));
-//         }
-//     } catch (error) {
-//         return res.status(500).send(failure("Internal server error", error))
-//     }
-// }
+        if (verified.reader_email === existingReader.reader_email) {
+            console.log("Verified", verified.reader_email)
+            next()
+        }
+        else {
+            return res.status(400).send(failure("Authorization failed"))
+        }
+
+    } catch (error) {
+        return res.status(500).send(failure("Internal server error", error))
+    }
+}
 
 module.exports = {
     checkLogin,
-    isAdmin
+    isAdmin,
+    isVerified
 }

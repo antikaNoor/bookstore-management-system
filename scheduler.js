@@ -69,7 +69,7 @@ const checkAndUpdateDiscounts = async () => {
 checkAndUpdateDiscounts(); // Call immediately when your application starts
 
 // Set up the interval to periodically check and update discounts (e.g., every 24 hours)
-const intervalInMilliseconds = 15 * 1000; // 15 hours
+const intervalInMilliseconds = 10 * 1000; // 10 seconds
 setInterval(checkAndUpdateDiscounts, intervalInMilliseconds);
 
 

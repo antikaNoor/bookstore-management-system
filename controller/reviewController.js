@@ -144,7 +144,7 @@ class reviewClass {
 
         } catch (error) {
             console.log("error found", error)
-            res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error"))
         }
     }
 

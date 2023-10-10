@@ -15,11 +15,9 @@ class AuthController {
         try {
             const validation = validationResult(req).array()
             if (validation.length > 0) {
-                return res.status(422).send({ message: "validation error", validation })
+                return res.status(400).send({ message: "validation error", validation })
             }
-            else {
-                next()
-            }
+            next()
         } catch (error) {
             console.log("error has occured")
         }
@@ -54,7 +52,7 @@ class AuthController {
             console.log(checkPassword)
 
             if (!checkPassword) {
-                return res.status(500).send(failure("Authentication failed"))
+                return res.status(400).send(failure("Authentication failed"))
             }
 
             // If the password is right, the loginAttempt property will be 0
@@ -64,22 +62,21 @@ class AuthController {
             const responseAuth = auth.toObject()
 
             delete responseAuth.password
-            delete responseAuth._id
             delete responseAuth.loginAttempt
-            delete responseAuth.reader
+            // delete responseAuth.reader
             delete responseAuth.__v
             delete responseAuth.createdAt
             delete responseAuth.updatedAt
 
             const generatedToken = jwt.sign(responseAuth, process.env.JWT_SECRET, {
-                expiresIn: "5h"
+                expiresIn: "20d"
             })
 
             responseAuth.token = generatedToken
 
             return res.status(200).send(success("Login successful", responseAuth))
         } catch (error) {
-            return res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error", error))
         }
     }
 
@@ -112,6 +109,7 @@ class AuthController {
                 reader_name: reader_name,
                 reader_email: reader_email,
                 password: hashedPassword,
+                balance: balance,
                 reader: readerInfo._id
             })
 
@@ -127,7 +125,7 @@ class AuthController {
 
             return res.status(200).send(success("Successfully added the user", responseAuth))
         } catch (error) {
-            return res.status(500).send(failure("Internal server error"))
+            return res.status(500).send(failure("Internal server error", error))
         }
     }
 }

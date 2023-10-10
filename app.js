@@ -19,10 +19,8 @@ const logFile = fs.createWriteStream(
 )
 
 const app = express()
-app.use(cors({
-  origin: "*",
-  credentials: false,
-}))
+app.use(cors({ origin: "*" }))
+// app.use(cors())
 app.use(express.json())
 app.use(express.text())
 app.use(express.urlencoded({ extended: true }))

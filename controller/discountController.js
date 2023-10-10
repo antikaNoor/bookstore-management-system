@@ -58,7 +58,7 @@ class discountController {
     // Update an existing discount
     async update(req, res) {
         try {
-            const { discountId, book, branch, discountPercentage, coupon, startDate, endDate } = req.body;
+            const { discountId, book, branch, discountPercentage, startDate, endDate } = req.body;
 
             // Validate discountId
             if (!mongoose.Types.ObjectId.isValid(discountId)) {
@@ -77,8 +77,7 @@ class discountController {
                 _id: { $ne: discountId }, // Exclude the current discount from the check
                 book: existingDiscount.book,
                 branch: branch,
-                discountPercentage: discountPercentage,
-                coupon: coupon,
+                discountPercentage: discountPercentage
             });
 
             if (duplicateDiscount) {
@@ -88,7 +87,6 @@ class discountController {
             existingDiscount.book = book
             existingDiscount.branch = branch
             existingDiscount.discountPercentage = discountPercentage;
-            existingDiscount.coupon = coupon;
             existingDiscount.startDate = startDate;
             existingDiscount.endDate = endDate;
 
