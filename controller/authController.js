@@ -69,7 +69,7 @@ class AuthController {
             delete responseAuth.updatedAt
 
             const generatedToken = jwt.sign(responseAuth, process.env.JWT_SECRET, {
-                expiresIn: "5h"
+                expiresIn: "20d"
             })
 
             responseAuth.token = generatedToken
@@ -109,6 +109,7 @@ class AuthController {
                 reader_name: reader_name,
                 reader_email: reader_email,
                 password: hashedPassword,
+                balance: balance,
                 reader: readerInfo._id
             })
 

@@ -95,7 +95,7 @@ class transactionController {
             for (const book of existingTransaction.bought_books) {
                 const bookData = await bookModel.findById(book.id);
                 if (!bookData) {
-                    return res.status(400).send(failure("Book with ID ${book.title} not found"));
+                    return res.status(400).send(failure(`Book with ID ${book.title} not found`));
                 }
 
                 totalSpent += bookData.price * book.quantity;
@@ -214,13 +214,13 @@ class transactionController {
 
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
             const existingCart = await cartModel.findOne({ reader: existingReader._id })
+                .populate("bought_books.id")
 
             if (!existingCart) {
                 return res.status(400).send(failure("This cart does not exist."))
             }
             const responseCart = existingCart.toObject()
 
-            delete responseCart._id
             delete responseCart.__v
             return res.status(200).send(success("Got the data from the cart", responseCart))
 
@@ -251,7 +251,7 @@ class transactionController {
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
             const existingEntity = await cartModel.findOne({ reader: existingReader._id })
 
-            if (!existingEntity) {
+            if (!existingEntity || !existingEntity.reader) {
                 return res.status(400).send(failure("Unauthorized reader"))
             }
 
