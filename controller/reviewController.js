@@ -15,7 +15,7 @@ class reviewClass {
             const validation = validationResult(req).array()
             if (validation.length > 0) {
                 console.log("validation error", validation)
-                return res.status(400).send(failure("Failed to add the book", validation))
+                return res.status(400).send(failure("Failed to add the review", validation))
             }
 
             const { book, reader, rating, text } = req.body
@@ -144,6 +144,44 @@ class reviewClass {
 
         } catch (error) {
             console.log("error found", error)
+            return res.status(500).send(failure("Internal server error"))
+        }
+    }
+
+    //see all reviews
+    async showReviews(req, res) {
+        try {
+            const { authorization } = req.headers
+
+            const token = authorization.split(' ')[1]
+            const decodedToken = jwt.decode(token, { complete: true })
+
+            const readerIdFromToken = decodedToken.payload.reader_name
+
+            const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
+            console.log("existingReader", existingReader)
+            const existingReview = await reviewModel.find({ reader: existingReader._id })
+            .populate("book")
+
+            if (!existingReview) {
+                return res.status(400).send(failure("You have not added any review."))
+            }
+            console.log(existingReview)
+            // const responseCart = existingTransaction.toObject()
+
+            // delete responseCart._id
+            // delete responseCart.__v
+            return res.status(200).send(success("Got the data from transaction.", existingReview))
+
+
+        } catch (error) {
+            console.log("error found", error)
+            if (error instanceof jwt.JsonWebTokenError) {
+                return res.status(500).send(failure("Token is invalid", error))
+            }
+            if (error instanceof jwt.TokenExpiredError) {
+                return res.status(500).send(failure("Token is expired", error))
+            }
             return res.status(500).send(failure("Internal server error"))
         }
     }
