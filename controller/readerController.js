@@ -30,7 +30,7 @@ class readerController {
 
             const response = existingReader.toObject()
 
-            delete response._id
+            // delete response._id
             delete response.__v
             delete response.createdAt
             delete response.updatedAt
@@ -53,7 +53,7 @@ class readerController {
     async viewUserData(req, res) {
         try {
             const result = await readerModel.find({})
-                .select('-_id -updatedAt -__v')
+                .select('-balance -updatedAt -__v')
             console.log(result)
 
             return res.status(200).send(success("Successfully got all user data", result))
@@ -76,7 +76,7 @@ class readerController {
             const { reader_name, status } = req.body;
 
             // Find the existing reader in the 'auth' collection
-            const existingAuth = await authModel.findById(readerId);
+            const existingAuth = await readerModel.findById(readerId);
 
             if (!existingAuth) {
                 return res.status(400).send(failure("Reader not found."));
@@ -85,7 +85,7 @@ class readerController {
             const matchName = existingAuth.reader_name
 
             // Check if the new reader name conflicts with any other existing reader
-            const existingName = await authModel.findOne({
+            const existingName = await readerModel.findOne({
                 _id: { $ne: readerId },
                 reader_name
             });
@@ -100,7 +100,7 @@ class readerController {
             const updatedAuth = await existingAuth.save();
 
             // Update the 'reader' collection
-            const existingReader = await readerModel.findOne({ reader_name: matchName });
+            const existingReader = await authModel.findOne({ reader_name: matchName });
             console.log(existingReader)
 
             if (existingReader) {
@@ -112,9 +112,9 @@ class readerController {
             const responseAuth = updatedAuth.toObject()
 
             delete responseAuth.password
-            delete responseAuth._id
+            // delete responseAuth._id
             delete responseAuth.loginAttempt
-            delete responseAuth.reader
+            // delete responseAuth.reader
             delete responseAuth.__v
             delete responseAuth.createdAt
             delete responseAuth.updatedAt
@@ -131,14 +131,14 @@ class readerController {
         try {
             const { readerId } = req.params
 
-            const existingAuth = await authModel.findById(readerId)
+            const existingAuth = await readerModel.findById(readerId)
             if (!existingAuth) {
                 return res.status(400).send(failure("Reader not found."))
             }
             const matchName = existingAuth.reader_name
-            await authModel.findByIdAndDelete(readerId)
+            await readerModel.findByIdAndDelete(readerId)
 
-            await readerModel.findOneAndDelete({ reader_name: matchName });
+            await authModel.findOneAndDelete({ reader_name: matchName });
 
             return res.status(200).send(success("Successfully deleted the reader's information"))
 

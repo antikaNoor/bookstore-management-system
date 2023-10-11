@@ -7,7 +7,7 @@ const orderSchema = new mongoose.Schema({
     },
     reader: {
         type: mongoose.Types.ObjectId,
-        ref: "Cart"
+        ref: "Reader"
     },
     total_spent: {
         type: Number,
@@ -26,7 +26,7 @@ const orderSchema = new mongoose.Schema({
             },
             amount: {
                 type: Number,
-                select: false, // Exclude 'amount' field from being selected
+                select: false,
             },
             quantity: {
                 type: Number,
@@ -38,7 +38,7 @@ const orderSchema = new mongoose.Schema({
             }
         }
     ]
-})
+}, { timestamps: true })
 
 const Order = mongoose.model("Order", orderSchema);
 module.exports = Order;

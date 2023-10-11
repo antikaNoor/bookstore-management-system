@@ -375,7 +375,16 @@ class transactionController {
     async getAllTransactions(req, res) {
         try {
             const result = await orderModel.find({})
+                .populate({
+                    path: 'reader',
+                    select: 'reader_name reader_email', // Select the fields you want to populate for the reader
+                })
+                .populate({
+                    path: 'bought_books.id',
+                    select: 'title author genre', // Select the fields you want to populate for the bought books
+                })
                 .select("-_id -__v")
+
             if (result.length > 0) {
                 return res
                     .status(200)
