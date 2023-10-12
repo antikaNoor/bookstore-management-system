@@ -78,6 +78,9 @@ class transactionController {
                     }]
                 })
             }
+            await existingTransaction.save()
+
+            console.log("existing", existingTransaction)
 
             for (const book of existingTransaction.bought_books) {
                 const bookData = await bookModel.findById(book.id);

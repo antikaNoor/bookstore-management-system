@@ -25,7 +25,8 @@ class readerController {
             if (!existingReader) {
                 return res.status(400).send(failure("Reader not found!"))
             }
-            existingReader.balance += balance
+            existingReader.balance += parseInt(balance)
+
             existingReader.save()
 
             const response = existingReader.toObject()
@@ -34,8 +35,8 @@ class readerController {
             delete response.__v
             delete response.createdAt
             delete response.updatedAt
-            delete response.reader_email
-            delete response.status
+            // delete response.reader_email
+            // delete response.status
 
             return res.status(200).send(success("Successfully updated the balance.", response))
 
@@ -60,6 +61,36 @@ class readerController {
 
         } catch (error) {
             res.status(500).send(failure(error.message))
+        }
+    }
+
+    // user can check the balance
+    async viewBalance(req, res) {
+        try {
+            const { authorization } = req.headers
+
+            const token = authorization.split(' ')[1]
+            const decodedToken = jwt.decode(token, { complete: true })
+
+            const readerIdFromToken = decodedToken.payload.reader_name
+
+            const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken }).select("_id balance")
+
+            if (!existingReader) {
+                return res.status(400).send(failure("This reader does not exist."))
+            }
+            return res.status(200).send(success("Got the data from the cart", existingReader))
+
+
+        } catch (error) {
+            console.log("error found", error)
+            if (error instanceof jwt.JsonWebTokenError) {
+                return res.status(500).send(failure("Token is invalid", error))
+            }
+            if (error instanceof jwt.TokenExpiredError) {
+                return res.status(500).send(failure("Token is expired", error))
+            }
+            res.status(500).send(failure("Internal server error"))
         }
     }
 

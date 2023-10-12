@@ -109,7 +109,7 @@ class AuthController {
                 reader_name: reader_name,
                 reader_email: reader_email,
                 password: hashedPassword,
-                balance: balance,
+                // balance: balance,
                 reader: readerInfo._id
             })
 

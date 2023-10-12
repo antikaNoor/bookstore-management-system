@@ -6,6 +6,7 @@ const { checkLogin, isAdmin, isVerified } = require('../middleware/auth')
 const readerController = require('../controller/readerController')
 
 routes.put("/update-balance", checkLogin, readerController.updateByUser)
+routes.get("/check-balance", checkLogin, readerController.viewBalance)
 routes.get("/get-user-info", checkLogin, isAdmin, readerController.viewUserData)
 routes.patch("/edit-reader/:readerId", readerEditValidator.edit, checkLogin, isAdmin, readerController.editUserData)
 routes.delete("/delete-reader/:readerId", checkLogin, isAdmin, readerController.deleteUserData)

@@ -15,6 +15,7 @@ const checkLogin = (req, res, next) => {
     try {
         if (authorization) {
             const token = authorization.split(' ')[1]
+            console.log(token)
             // verifying the token provided in the authorization header with the secret key in .env file
             const verified = jwt.verify(token, process.env.JWT_SECRET)
 

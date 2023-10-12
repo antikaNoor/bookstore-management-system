@@ -20,9 +20,9 @@ const authSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    balance: {
-        type: Number,
-    },
+    // balance: {
+    //     type: Number,
+    // },
     loginAttempt: {
         type: Number,
         default: 0
