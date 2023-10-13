@@ -384,7 +384,7 @@ class transactionController {
                 })
                 .populate({
                     path: 'bought_books.id',
-                    select: 'title author genre', // Select the fields you want to populate for the bought books
+                    select: 'title author genre image', // Select the fields you want to populate for the bought books
                 })
                 .select("-_id -__v")
 
