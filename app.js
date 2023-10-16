@@ -5,6 +5,7 @@ const cartRouter = require('./routes/cartRoutes')
 const discountRouter = require('./routes/discountRoutes')
 const readerRouter = require('./routes/readerRoutes')
 const reviewRouter = require('./routes/reviewRoutes')
+const mailRoutes = require('./routes/mailRoutes')
 const cors = require("cors")
 const databaseConnection = require('./config/database')
 const dotenv = require('dotenv')
@@ -42,6 +43,7 @@ app.use("/cart", cartRouter)
 app.use("/discount", discountRouter)
 app.use("/reader", readerRouter)
 app.use("/review", reviewRouter)
+app.use("/mail", mailRoutes);
 
 // using route() method to get the invalid routes
 app.route('*')

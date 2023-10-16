@@ -99,16 +99,35 @@ class reviewClass {
 
             // if the rating is already removed by the reader
             if (!rating && !text) {
-
-                // Update the associated book document to remove the discount ID
+                // Remove the review ID from the associated book document
                 await bookModel.findByIdAndUpdate(
                     book,
                     { $pull: { reviews: existingReview._id } },
                     { new: true } // This option returns the updated document
-                )
+                );
+
+                // Remove the review document
                 await reviewModel.deleteOne({ _id: existingReview._id });
 
-                return res.status(200).send(success("You removed the rating and the review. The review is deleted."))
+                // Calculate new average rating and update the book's rating
+                const reviews = await reviewModel.find({ book, rating: { $exists: true } });
+                let totalRating = 0;
+                let numberOfReviewsWithRatings = 0;
+
+                for (const rev of reviews) {
+                    totalRating += rev.rating;
+                    numberOfReviewsWithRatings++;
+                }
+
+                // Calculate new average rating
+                const averageRating = numberOfReviewsWithRatings > 0 ? totalRating / numberOfReviewsWithRatings : 0;
+
+                // Update the book's rating
+                await bookModel.findByIdAndUpdate(book, { rating: averageRating });
+
+                console.log(`Average rating updated for book ${book} to ${averageRating}`);
+
+                return res.status(200).send(success("You removed the rating and the review. The review is deleted."));
             }
 
             existingReview.rating = rating
@@ -161,7 +180,7 @@ class reviewClass {
             const existingReader = await readerModel.findOne({ reader_name: readerIdFromToken })
             console.log("existingReader", existingReader)
             const existingReview = await reviewModel.find({ reader: existingReader._id })
-            .populate("book")
+                .populate("book")
 
             if (!existingReview) {
                 return res.status(400).send(failure("You have not added any review."))

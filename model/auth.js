@@ -20,12 +20,21 @@ const authSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    // balance: {
-    //     type: Number,
-    // },
     loginAttempt: {
         type: Number,
         default: 0
+    },
+    resetPassword: {
+        type: Boolean || null,
+        default: false
+    },
+    resetPasswordToken: {
+        type: String || null,
+        default: null
+    },
+    resetPasswordExpired: {
+        type: Date || null,
+        default: null
     },
     reader: {
         type: mongoose.Types.ObjectId,
