@@ -3,6 +3,9 @@ const reviewModel = require('../model/review')
 const { success, failure } = require('../utils/success-error')
 const express = require('express')
 const { validationResult } = require('express-validator')
+const fileTypes = require("../constants/fileTypes")
+const fs = require('fs')
+const path = require('path')
 
 class bookController {
 
@@ -19,6 +22,43 @@ class bookController {
         }
     }
 
+    // add files using multer
+    async uploadFiles(req, res) {
+        try {
+            if (!fileTypes.includes(req.file_extention)) {
+                return res.status(400).send(failure("Invalid file type"))
+            }
+            if (!req.file) {
+                return res.status(400).send(failure("No file found"))
+            }
+
+            // console.log("filename", req.file.file)
+            const commonPrefix = 'D:\\MERN_Antika_Noor\\backendForReact\\expressJs-practice-filter-fixed\\server\\';
+            const fileName = req.file.path.replace(commonPrefix, '');
+            return res.status(200).send(success("Successfully uploaded the file", fileName))
+        } catch (error) {
+            console.error("Error while entering file:", error);
+            return res.status(500).send(failure("internal server error."))
+        }
+    }
+
+    //get the file
+    async getFile(req, res) {
+        try {
+            const { filepath } = req.params;
+            const exists = fs.existsSync(path.join(__dirname, "..", "server", filepath));
+
+            if (!exists) {
+                return res.status(400).send(failure("No file found"))
+            }
+            console.log("filepath", filepath)
+            return res.status(200).sendFile(path.join(__dirname, "..", "server", filepath));
+        } catch (error) {
+            console.log(error);
+            return res.status(500).send(failure("Internal server error."))
+        }
+    }
+
     //add data
     async add(req, res) {
         try {
@@ -28,11 +68,13 @@ class bookController {
                 return res.status(400).send(failure("Failed to add the book", validation))
             }
 
-            const { title, author, genre, description, pages, price, stock, branch, image } = req.body
+            const { title, author, genre, description, pages, price, stock, branch } = req.body
 
             if (!price || !stock) {
                 return res.status(400).send(failure("Price and stock must be provided"))
             }
+
+            const { image } = req.body;
 
             let existingBook = await bookModel.findOne({ title, author })
             if (existingBook) {
